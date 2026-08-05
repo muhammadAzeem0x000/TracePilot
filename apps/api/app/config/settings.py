@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     supabase_url: str | None = None
     supabase_key: str | None = None
+    github_token: str | None = None
+    github_api_url: str = "https://api.github.com"
     cors_origins: str = Field(default="http://localhost:3000")
 
     @property
@@ -40,6 +42,11 @@ class Settings(BaseSettings):
         assert self.supabase_url is not None
         assert self.supabase_key is not None
         return self.supabase_url.rstrip("/"), self.supabase_key
+
+    def require_github(self) -> tuple[str, str]:
+        if not self.github_token:
+            raise RuntimeError("Missing required GitHub configuration: GITHUB_TOKEN")
+        return self.github_api_url.rstrip("/"), self.github_token
 
 
 @lru_cache
