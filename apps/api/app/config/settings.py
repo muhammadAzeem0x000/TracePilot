@@ -1,0 +1,47 @@
+from functools import lru_cache
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Environment-backed API settings.
+
+    Supabase values are required when an incident repository is constructed, while
+    `/health` intentionally remains available for diagnosing missing configuration.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=(".env", "../../.env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    supabase_url: str | None = None
+    supabase_key: str | None = None
+    cors_origins: str = Field(default="http://localhost:3000")
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    def require_supabase(self) -> tuple[str, str]:
+        missing = [
+            name
+            for name, value in (
+                ("SUPABASE_URL", self.supabase_url),
+                ("SUPABASE_KEY", self.supabase_key),
+            )
+            if not value
+        ]
+        if missing:
+            names = ", ".join(missing)
+            raise RuntimeError(f"Missing required incident storage configuration: {names}")
+        assert self.supabase_url is not None
+        assert self.supabase_key is not None
+        return self.supabase_url.rstrip("/"), self.supabase_key
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
