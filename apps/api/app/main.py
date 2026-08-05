@@ -15,8 +15,8 @@ def create_app() -> FastAPI:
     settings = get_settings()
     application = FastAPI(
         title="TracePilot API",
-        version="0.1.0",
-        description="Day-1 incident persistence API for TracePilot.",
+        version="0.2.0",
+        description="Evidence-grounded preliminary incident investigation API.",
     )
     application.add_middleware(
         CORSMiddleware,
@@ -53,4 +53,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
