@@ -1,0 +1,1 @@
+"""Repository-scoped knowledge retrieval."""

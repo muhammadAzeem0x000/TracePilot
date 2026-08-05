@@ -6,6 +6,9 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from app.schemas.incident import RepositoryFullName
 
 type KnowledgeMetadataValue = str | int | float | bool | None
+type KnowledgeJsonValue = (
+    KnowledgeMetadataValue | list[KnowledgeJsonValue] | dict[str, KnowledgeJsonValue]
+)
 
 
 class KnowledgeSourceType(StrEnum):
@@ -67,3 +70,53 @@ class KnowledgeIngestionResult(BaseModel):
     source_reference: str
     action: KnowledgeIngestionAction
     chunk_count: int = Field(ge=0)
+
+
+class KnowledgeSearchMode(StrEnum):
+    SEMANTIC = "semantic"
+    HYBRID = "hybrid"
+    RERANKED = "reranked"
+
+
+class KnowledgeSearchRow(BaseModel):
+    chunk_id: UUID
+    source_id: UUID
+    source_type: KnowledgeSourceType
+    source_reference: str
+    title: str
+    content: str
+    token_count: int = Field(gt=0)
+    metadata: dict[str, KnowledgeJsonValue]
+    score: float
+
+
+class KnowledgeSearchResult(BaseModel):
+    chunk_id: UUID
+    source_id: UUID
+    source_type: KnowledgeSourceType
+    source_reference: str
+    title: str
+    content: str
+    token_count: int = Field(gt=0)
+    metadata: dict[str, KnowledgeJsonValue]
+    semantic_score: float | None = None
+    semantic_rank: int | None = Field(default=None, gt=0)
+    lexical_score: float | None = None
+    lexical_rank: int | None = Field(default=None, gt=0)
+    hybrid_score: float | None = None
+    hybrid_rank: int | None = Field(default=None, gt=0)
+    rerank_rank: int | None = Field(default=None, gt=0)
+
+
+class KnowledgeSearchResponse(BaseModel):
+    query: str
+    repository_full_name: RepositoryFullName
+    mode: KnowledgeSearchMode
+    items: list[KnowledgeSearchResult]
+    count: int = Field(ge=0)
+    rerank_fallback: bool = False
+    context_tokens: int = Field(ge=0)
+
+
+class RerankResult(BaseModel):
+    ranked_candidate_ids: list[UUID] = Field(min_length=1, max_length=30)

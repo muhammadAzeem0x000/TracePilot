@@ -59,12 +59,13 @@ class OpenAICompatibleLLMProvider:
         payload: dict[str, object] = {
             "model": self._model,
             "messages": [self._serialize_message(message) for message in messages],
-            "tools": [tool.model_dump(exclude_none=True) for tool in tools],
-            "tool_choice": "auto",
             "temperature": 0.1,
             "max_tokens": 2_000,
             "response_format": {"type": "json_object"},
         }
+        if tools:
+            payload["tools"] = [tool.model_dump(exclude_none=True) for tool in tools]
+            payload["tool_choice"] = "auto"
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",

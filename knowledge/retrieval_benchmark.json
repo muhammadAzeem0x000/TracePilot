@@ -1,0 +1,62 @@
+[
+  {
+    "query": "checkout code references payment_status but production says the column does not exist",
+    "relevant_sources": [
+      "runbooks/database-migrations.md",
+      "past_incidents/missing-checkout-column.md"
+    ]
+  },
+  {
+    "query": "new release caused errors and we need the previous image without reversing schema",
+    "relevant_sources": ["runbooks/deployment-rollback.md"]
+  },
+  {
+    "query": "tokens fail with invalid_audience after configuration rollout",
+    "relevant_sources": ["runbooks/authentication-configuration.md"]
+  },
+  {
+    "query": "payment provider read timeout retries might create duplicate charges",
+    "relevant_sources": [
+      "runbooks/external-api-timeouts.md",
+      "architecture/checkout-service.md"
+    ]
+  },
+  {
+    "query": "where is the checkout outbox event written and which statuses are valid",
+    "relevant_sources": ["architecture/checkout-service.md"]
+  },
+  {
+    "query": "refund message ran twice after the visibility lease expired",
+    "relevant_sources": [
+      "past_incidents/duplicate-refund-jobs.md",
+      "architecture/job-execution.md"
+    ]
+  },
+  {
+    "query": "worker crash redelivers completed work and needs a stable idempotency key",
+    "relevant_sources": ["architecture/job-execution.md"]
+  },
+  {
+    "query": "a user can read a record belonging to another organization",
+    "relevant_sources": ["architecture/tenant-authorization.md"]
+  },
+  {
+    "query": "hundreds of SELECT statements appear while serializing one catalog page",
+    "relevant_sources": ["past_incidents/catalog-n-plus-one.md"]
+  },
+  {
+    "query": "deployment pipeline needs a gate comparing expected and applied migration heads",
+    "relevant_sources": [
+      "past_incidents/missing-checkout-column.md",
+      "runbooks/database-migrations.md"
+    ]
+  },
+  {
+    "query": "email analytics failure should not turn a successful payment into HTTP 500",
+    "relevant_sources": ["architecture/checkout-service.md"]
+  },
+  {
+    "query": "rolling back the application did not restore environment variables",
+    "relevant_sources": ["runbooks/deployment-rollback.md"]
+  }
+]
