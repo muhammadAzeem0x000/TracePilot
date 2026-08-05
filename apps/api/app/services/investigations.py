@@ -240,9 +240,9 @@ class InvestigationService:
                     ChatMessage(
                         role="user",
                         content=(
-                            "Your final response failed validation. If no GitHub tool has "
-                            "been called, "
-                            "call one now. Otherwise, correct it and return only valid JSON. "
+                            "Your final response failed validation. If no evidence tool has "
+                            "been called, call one now. Otherwise, correct it and return only "
+                            "valid JSON. "
                             f"You may cite only these evidence IDs: {json.dumps(allowed_ids)}. "
                             "Confidence must be from 0.0 through 1.0, and every field in "
                             "the specified JSON shape is required."

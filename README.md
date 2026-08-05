@@ -130,6 +130,15 @@ npm run build:web
 ```
 
 Ordinary tests use typed in-memory doubles and make no Supabase, GitHub, embedding, or LLM calls.
+After ingesting the corpus, the opt-in live workflow asserts that the model actually executes
+`search_knowledge`, persists knowledge Evidence, cites at least one knowledge UUID, and passes the
+database ownership check:
+
+```powershell
+$env:PYTHONPATH="apps/api"
+.\.venv\Scripts\python.exe apps\api\scripts\live_day3_verification.py `
+  --repository owner/repository
+```
 
 ## Environment variables
 

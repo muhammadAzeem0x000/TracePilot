@@ -162,7 +162,7 @@ export default function Home() {
   return (
     <main>
       <header className="hero">
-        <div className="eyebrow">Day 2 · Evidence workflow</div>
+        <div className="eyebrow">Day 3 · Retrieval-grounded workflow</div>
         <h1>TracePilot</h1>
         <p>Evidence-Grounded Incident Investigation</p>
       </header>
@@ -210,7 +210,7 @@ export default function Home() {
                 <div><dt>Started</dt><dd>{formatDate(selected.started_at)}</dd></div>
                 <div><dt>Incident ID</dt><dd className="mono">{selected.id}</dd></div>
               </dl>
-              {selected.repository_full_name ? <button className="run-button" type="button" disabled={running || detailsLoading} onClick={handleRunInvestigation}>{running ? "Investigating…" : "Run investigation"}</button> : <p className="notice">Add repository context to run a GitHub investigation.</p>}
+              {selected.repository_full_name ? <button className="run-button" type="button" disabled={running || detailsLoading} onClick={handleRunInvestigation}>{running ? "Investigating…" : "Run investigation"}</button> : <p className="notice">Add repository context to run an evidence-grounded investigation.</p>}
             </article>
           )}
         </section>
@@ -221,7 +221,7 @@ export default function Home() {
           <article className="result-panel evidence-panel">
             <div className="result-label factual">Factual collected evidence</div>
             <h2>EVIDENCE</h2>
-            <p className="boundary-copy">Read-only GitHub records retrieved and stored by TracePilot.</p>
+            <p className="boundary-copy">Read-only GitHub records and knowledge chunks retrieved and stored by TracePilot.</p>
             {evidence.length === 0 ? <p className="empty">No evidence collected yet.</p> : <div className="evidence-list">{evidence.map((item) => (
               <article className="evidence-card" id={`evidence-${item.id}`} key={item.id}>
                 <div><span className={`badge source ${item.source_type === "knowledge_chunk" ? "knowledge-source" : ""}`}>{evidenceOrigin(item)}</span><time>{formatDate(item.collected_at)}</time></div>
