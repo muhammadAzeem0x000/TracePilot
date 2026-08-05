@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.ai.provider import LLMUnavailableError
+from app.ai.tool_definitions import GITHUB_TOOL_DEFINITIONS
 from app.api.dependencies import get_investigation_service
 from app.integrations.github import GitHubNotFoundError
 from app.repositories.evidence import EvidenceRepository
@@ -304,13 +305,15 @@ class ToolThenConclusionLLM:
         self.cited_id = cited_id
         self.invalid_final = invalid_final
         self.calls = 0
+        self.advertised_tool_names: list[str] = []
 
     async def complete(
         self,
         messages: list[ChatMessage],
-        _tools: list[ToolDefinition],
+        tools: list[ToolDefinition],
     ) -> ModelTurn:
         self.calls += 1
+        self.advertised_tool_names = [tool.function.name for tool in tools]
         if self.calls == 1:
             return ModelTurn(
                 tool_calls=[
@@ -417,6 +420,33 @@ def test_successful_investigation_persists_commit_evidence() -> None:
     stored = next(iter(evidence.items.values()))
     assert stored.source_type.value == "github_commit"
     assert result.supporting_evidence_ids == [stored.id]
+
+
+def test_service_can_advertise_only_tools_implemented_by_its_executor() -> None:
+    incident = make_incident()
+    llm = ToolThenConclusionLLM()
+    evidence = MemoryEvidenceRepository()
+    investigations = MemoryInvestigationRepository()
+    service = InvestigationService(
+        MemoryIncidentRepository(incident),
+        investigations,
+        evidence,
+        GitHubToolExecutor(FakeGitHubClient(), evidence),
+        llm,
+        tool_definitions=GITHUB_TOOL_DEFINITIONS,
+    )
+
+    result = run_async(service.run(incident.id))
+
+    assert result.status is InvestigationStatus.COMPLETED
+    assert "search_knowledge" not in llm.advertised_tool_names
+    assert set(llm.advertised_tool_names) == {
+        "list_recent_commits",
+        "get_commit",
+        "list_recent_pull_requests",
+        "get_pull_request",
+        "get_pull_request_files",
+    }
 
 
 def test_llm_can_request_pull_request_tool() -> None:

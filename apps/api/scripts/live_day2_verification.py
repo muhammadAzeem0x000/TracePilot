@@ -6,6 +6,7 @@ import json
 from datetime import UTC, datetime
 
 from app.ai.provider import OpenAICompatibleLLMProvider
+from app.ai.tool_definitions import GITHUB_TOOL_DEFINITIONS
 from app.config.settings import Settings
 from app.db.supabase import SupabaseRestClient
 from app.integrations.github import GitHubClient
@@ -59,6 +60,7 @@ async def verify(repository_full_name: str) -> dict[str, object]:
         llm,
         max_tool_calls=settings.max_tool_calls,
         final_output_retries=settings.final_output_retries,
+        tool_definitions=GITHUB_TOOL_DEFINITIONS,
     )
     investigation = await service.run(incident.id)
     collected = await evidence.list_for_investigation(investigation.id)

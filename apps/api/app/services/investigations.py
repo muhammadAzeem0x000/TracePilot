@@ -16,7 +16,7 @@ from app.schemas.investigation import (
     InvestigationResponse,
     PreliminaryInvestigationResult,
 )
-from app.schemas.llm import ChatMessage, ModelTurn
+from app.schemas.llm import ChatMessage, ModelTurn, ToolDefinition
 from app.services.incidents import IncidentNotFoundError
 from app.tools.github import ToolExecutionContext
 from app.tools.investigation import InvestigationToolExecutorProtocol
@@ -63,6 +63,7 @@ class InvestigationService:
         *,
         max_tool_calls: int = 6,
         final_output_retries: int = 1,
+        tool_definitions: list[ToolDefinition] | None = None,
     ) -> None:
         self._incidents = incident_repository
         self._investigations = investigation_repository
@@ -71,6 +72,11 @@ class InvestigationService:
         self._llm = llm_provider
         self._max_tool_calls = max_tool_calls
         self._final_output_retries = final_output_retries
+        self._tool_definitions = (
+            tool_definitions
+            if tool_definitions is not None
+            else INVESTIGATION_TOOL_DEFINITIONS
+        )
 
     async def run(self, incident_id: UUID) -> InvestigationResponse:
         incident = await self._incidents.get(incident_id)
@@ -161,7 +167,7 @@ class InvestigationService:
                     "tool_calls_used": tool_call_count,
                 },
             )
-            turn = await self._llm.complete(messages, INVESTIGATION_TOOL_DEFINITIONS)
+            turn = await self._llm.complete(messages, self._tool_definitions)
             if turn.tool_calls:
                 if tool_call_count + len(turn.tool_calls) > self._max_tool_calls:
                     raise ToolCallLimitError(

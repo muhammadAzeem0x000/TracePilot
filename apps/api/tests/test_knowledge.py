@@ -2,6 +2,7 @@ import asyncio
 import json
 from collections.abc import Awaitable
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
@@ -518,3 +519,15 @@ def test_retrieved_knowledge_is_persisted_as_incident_investigation_evidence() -
 def test_rerank_result_rejects_empty_candidate_list() -> None:
     with pytest.raises(ValidationError):
         RerankResult(ranked_candidate_ids=[])
+
+
+def test_replacement_migration_qualifies_source_id_column() -> None:
+    migration = (
+        Path(__file__).parents[3]
+        / "supabase"
+        / "migrations"
+        / "202608060002_day3_fix_knowledge_replacement.sql"
+    ).read_text(encoding="utf-8")
+
+    assert "delete from public.knowledge_chunks as knowledge_chunk" in migration
+    assert "where knowledge_chunk.source_id = stored_source_id" in migration
