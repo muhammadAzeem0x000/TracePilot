@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from datetime import datetime
 from typing import Protocol
 
 import httpx
@@ -68,7 +69,7 @@ class _RawUser(BaseModel):
 
 class _RawCommitAuthor(BaseModel):
     name: str | None = None
-    date: str | None = None
+    date: datetime | None = None
 
 
 class _RawCommitData(BaseModel):
@@ -111,9 +112,9 @@ class _RawPullRequest(BaseModel):
     body: str | None = None
     state: str
     user: _RawUser | None = None
-    created_at: str
-    updated_at: str
-    merged_at: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    merged_at: datetime | None = None
     html_url: str
     additions: int = 0
     deletions: int = 0
