@@ -143,11 +143,11 @@ as $$
         kc.content,
         kc.token_count,
         kc.metadata || jsonb_build_object('source_metadata', ks.metadata),
-        1 - (kc.embedding <=> query_embedding) as score
+        1 - (kc.embedding OPERATOR(extensions.<=>) query_embedding) as score
     from public.knowledge_chunks kc
     join public.knowledge_sources ks on ks.id = kc.source_id
     where ks.repository_full_name = filter_repository
-    order by kc.embedding <=> query_embedding, kc.id
+    order by kc.embedding OPERATOR(extensions.<=>) query_embedding, kc.id
     limit least(greatest(match_count, 1), 50);
 $$;
 
