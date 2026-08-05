@@ -40,7 +40,8 @@ export interface Evidence {
     | "github_commit_search"
     | "github_pull_request"
     | "github_pull_request_search"
-    | "github_pull_request_file";
+    | "github_pull_request_file"
+    | "knowledge_chunk";
   source_reference: string | null;
   content: string;
   metadata: Record<string, string | number | boolean | null>;

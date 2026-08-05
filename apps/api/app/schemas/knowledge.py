@@ -120,3 +120,10 @@ class KnowledgeSearchResponse(BaseModel):
 
 class RerankResult(BaseModel):
     ranked_candidate_ids: list[UUID] = Field(min_length=1, max_length=30)
+
+
+class SearchKnowledgeArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(min_length=3, max_length=500)
+    top_k: int = Field(default=5, ge=1, le=6)

@@ -12,6 +12,7 @@ class EvidenceSourceType(StrEnum):
     GITHUB_PULL_REQUEST = "github_pull_request"
     GITHUB_PULL_REQUEST_SEARCH = "github_pull_request_search"
     GITHUB_PULL_REQUEST_FILE = "github_pull_request_file"
+    KNOWLEDGE_CHUNK = "knowledge_chunk"
 
 
 class EvidenceCreate(BaseModel):

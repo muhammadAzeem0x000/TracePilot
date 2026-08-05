@@ -47,6 +47,12 @@ function evidenceLabel(evidence: Evidence): string {
   return evidence.source_reference ?? evidence.source_type;
 }
 
+function evidenceOrigin(evidence: Evidence): string {
+  if (evidence.source_type !== "knowledge_chunk") return evidence.source_type.replaceAll("_", " ");
+  const sourceType = evidence.metadata.knowledge_source_type;
+  return typeof sourceType === "string" ? sourceType.replaceAll("_", " ") : "knowledge";
+}
+
 export default function Home() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selected, setSelected] = useState<Incident | null>(null);
@@ -218,9 +224,10 @@ export default function Home() {
             <p className="boundary-copy">Read-only GitHub records retrieved and stored by TracePilot.</p>
             {evidence.length === 0 ? <p className="empty">No evidence collected yet.</p> : <div className="evidence-list">{evidence.map((item) => (
               <article className="evidence-card" id={`evidence-${item.id}`} key={item.id}>
-                <div><span className="badge source">{item.source_type.replaceAll("_", " ")}</span><time>{formatDate(item.collected_at)}</time></div>
+                <div><span className={`badge source ${item.source_type === "knowledge_chunk" ? "knowledge-source" : ""}`}>{evidenceOrigin(item)}</span><time>{formatDate(item.collected_at)}</time></div>
                 <h3>{evidenceLabel(item)}</h3>
                 <p className="mono">{item.source_reference}</p>
+                {item.source_type === "knowledge_chunk" && <details className="retrieval-details"><summary>Retrieval details</summary><pre>{JSON.stringify(item.metadata, null, 2)}</pre></details>}
                 <small className="mono">Evidence ID: {item.id}</small>
               </article>
             ))}</div>}

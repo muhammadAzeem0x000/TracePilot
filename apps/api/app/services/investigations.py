@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from app.ai.prompts.investigation_v1 import PROMPT_VERSION, SYSTEM_PROMPT, build_incident_prompt
 from app.ai.provider import LLMProvider
-from app.ai.tool_definitions import GITHUB_TOOL_DEFINITIONS
+from app.ai.tool_definitions import INVESTIGATION_TOOL_DEFINITIONS
 from app.repositories.evidence import EvidenceRepository
 from app.repositories.incidents import IncidentRepository, RepositoryError
 from app.repositories.investigations import InvestigationRepository
@@ -18,7 +18,8 @@ from app.schemas.investigation import (
 )
 from app.schemas.llm import ChatMessage, ModelTurn
 from app.services.incidents import IncidentNotFoundError
-from app.tools.github import GitHubToolExecutor, ToolExecutionContext
+from app.tools.github import ToolExecutionContext
+from app.tools.investigation import InvestigationToolExecutorProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ class InvestigationService:
         incident_repository: IncidentRepository,
         investigation_repository: InvestigationRepository,
         evidence_repository: EvidenceRepository,
-        tool_executor: GitHubToolExecutor,
+        tool_executor: InvestigationToolExecutorProtocol,
         llm_provider: LLMProvider,
         *,
         max_tool_calls: int = 6,
@@ -160,7 +161,7 @@ class InvestigationService:
                     "tool_calls_used": tool_call_count,
                 },
             )
-            turn = await self._llm.complete(messages, GITHUB_TOOL_DEFINITIONS)
+            turn = await self._llm.complete(messages, INVESTIGATION_TOOL_DEFINITIONS)
             if turn.tool_calls:
                 if tool_call_count + len(turn.tool_calls) > self._max_tool_calls:
                     raise ToolCallLimitError(
@@ -217,7 +218,7 @@ class InvestigationService:
             try:
                 if tool_call_count == 0:
                     raise InvalidModelOutputError(
-                        "LLM attempted to conclude before collecting GitHub evidence"
+                        "LLM attempted to conclude before collecting evidence"
                     )
                 result = self._parse_final_turn(turn)
                 await self._validate_evidence_references(result, context)

@@ -1,9 +1,15 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.dependencies import IncidentServiceDependency, InvestigationServiceDependency
+from app.ai.embeddings import EmbeddingProviderError
+from app.ai.provider import LLMProviderError
+from app.api.dependencies import (
+    IncidentServiceDependency,
+    InvestigationServiceDependency,
+    KnowledgeRetrievalServiceDependency,
+)
 from app.schemas.evidence import EvidenceListResponse
 from app.schemas.incident import (
     ErrorResponse,
@@ -13,6 +19,7 @@ from app.schemas.incident import (
     IncidentResponse,
 )
 from app.schemas.investigation import InvestigationListResponse, InvestigationResponse
+from app.schemas.knowledge import KnowledgeSearchMode, KnowledgeSearchResponse
 from app.services.incidents import IncidentNotFoundError
 from app.services.investigations import (
     InvestigationExecutionError,
@@ -157,4 +164,26 @@ async def get_investigation(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Investigation {investigation_id} was not found",
+        ) from exc
+
+
+@router.get(
+    "/api/v1/knowledge/search",
+    response_model=KnowledgeSearchResponse,
+    responses={502: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+    tags=["knowledge-debug"],
+)
+async def search_knowledge(
+    service: KnowledgeRetrievalServiceDependency,
+    q: str = Query(min_length=3, max_length=500),
+    repository: str = Query(min_length=3, max_length=140),
+    mode: KnowledgeSearchMode = KnowledgeSearchMode.HYBRID,
+    top_k: int = Query(default=5, ge=1, le=10),
+) -> KnowledgeSearchResponse:
+    try:
+        return await service.search(q, repository, mode, top_k)
+    except (EmbeddingProviderError, LLMProviderError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Knowledge retrieval provider is temporarily unavailable",
         ) from exc

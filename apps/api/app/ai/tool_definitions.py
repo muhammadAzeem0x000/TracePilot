@@ -8,6 +8,7 @@ from app.schemas.github import (
     ListRecentPullRequestsArguments,
     PullRequestArguments,
 )
+from app.schemas.knowledge import SearchKnowledgeArguments
 from app.schemas.llm import ToolDefinition, ToolFunctionDefinition
 
 
@@ -49,3 +50,14 @@ GITHUB_TOOL_DEFINITIONS = [
         PullRequestArguments,
     ),
 ]
+
+KNOWLEDGE_TOOL_DEFINITION = _tool(
+    "search_knowledge",
+    (
+        "Search repository-scoped engineering runbooks, architecture, and past incidents. "
+        "The application controls repository scope."
+    ),
+    SearchKnowledgeArguments,
+)
+
+INVESTIGATION_TOOL_DEFINITIONS = [*GITHUB_TOOL_DEFINITIONS, KNOWLEDGE_TOOL_DEFINITION]
