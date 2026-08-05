@@ -115,6 +115,11 @@ every known UUID exactly once. Invented, missing, duplicate, or malformed IDs fa
 or validation failure falls back to RRF. This prevents an extra LLM call from becoming mandatory or
 automatically trusted.
 
+The live 12-query benchmark supports keeping this optional: reranking improved Hit@1 from 0.750 to
+0.917 and MRR from 0.875 to 0.958, but average latency increased from 1,934.2 ms for RRF to 4,874.1 ms.
+It improved two queries, left one Hit@1 error unchanged, and produced no measured reciprocal-rank
+regression in this run. These results are evidence for this small corpus, not a general guarantee.
+
 ## ADR-015: Persist retrieved chunks as Evidence
 
 **Status:** Accepted on Day 3
@@ -139,3 +144,7 @@ and enlarge the prompt-injection surface. The trade-off is measurable omission o
 The fixed 12-query benchmark records source hit@1/3/5, MRR, latency, and per-query lists for semantic,
 hybrid, and reranked modes. It does not judge final prose. This separates evidence-selection quality
 from reasoning quality and prevents fluent answers from masking retrieval failures.
+
+The first live run found semantic and RRF metrics identical. Therefore TracePilot does not claim
+hybrid improved the checked-in benchmark. Exact-identifier lexical retrieval was still verified
+directly, and retaining both channels remains justified for identifier-heavy engineering queries.

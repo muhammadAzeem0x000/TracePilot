@@ -75,6 +75,7 @@ Fill `.env`; it is ignored by Git. Apply migrations in order:
 2. `supabase/migrations/202608050001_day2_investigation_foundation.sql`
 3. `supabase/migrations/202608050002_day2_investigation_runtime_metadata.sql`
 4. `supabase/migrations/202608060001_day3_knowledge_retrieval.sql`
+5. `supabase/migrations/202608060002_day3_fix_knowledge_replacement.sql`
 
 ## Ingest and inspect knowledge
 
@@ -97,6 +98,30 @@ $env:PYTHONPATH="apps/api"
 The evaluation writes `docs/evaluation/retrieval_evaluation.json` and `.md`. Running ingestion
 again with unchanged content reports `skipped` and does not regenerate embeddings. Changed content
 is embedded first, then the source and all its chunks are replaced atomically by a database RPC.
+
+## Measured Day 3 results
+
+The fixed 12-query benchmark was executed on 2026-08-05 against the real TracePilot Supabase project,
+Gemini `gemini-embedding-001` at 768 dimensions, and DeepSeek `deepseek-chat` reranking:
+
+| Retrieval mode | Hit@1 | Hit@3 | Hit@5 | MRR | Average latency |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Semantic | 0.750 | 1.000 | 1.000 | 0.875 | 2,110.8 ms |
+| Hybrid (RRF) | 0.750 | 1.000 | 1.000 | 0.875 | 1,934.2 ms |
+| Hybrid + rerank | 0.917 | 1.000 | 1.000 | 0.958 | 4,874.1 ms |
+
+Hybrid did not improve a fixed-benchmark relevance metric over semantic-only on this small corpus.
+Lexical search was nevertheless verified independently: `payment_status UndefinedColumn` returned
+the missing-column incident and migration runbook. Reranking improved two Hit@1 failures (provider
+timeouts and asynchronous email/analytics) and made no benchmark reciprocal rank worse, but added
+about 2.9 seconds average latency. The worker-redelivery query remained a Hit@1 failure in every mode.
+See the committed [summary](docs/evaluation/retrieval_evaluation.md) and
+[per-query JSON](docs/evaluation/retrieval_evaluation.json).
+
+Live ingestion created 10 sources/10 chunks; a second pass skipped all 10. Supabase reported every
+stored vector as exactly 768 dimensions. The live RAG verifier completed investigation
+`3aa30109-98b0-46b9-9b1e-21eddcc5d59f`, persisted 13 Evidence rows (10 knowledge), cited three
+knowledge Evidence UUIDs, and passed the incident/investigation ownership check.
 
 ## Run
 

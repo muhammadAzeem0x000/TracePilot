@@ -1,0 +1,731 @@
+{
+  "repository_full_name": "muhammadAzeem0x000/TracePilot",
+  "methods": [
+    {
+      "mode": "semantic",
+      "source_hit_at_1": 0.75,
+      "source_hit_at_3": 1.0,
+      "source_hit_at_5": 1.0,
+      "mrr": 0.875,
+      "average_latency_ms": 2110.815558333267,
+      "cases": [
+        {
+          "query": "checkout code references payment_status but production says the column does not exist",
+          "relevant_sources": [
+            "runbooks/database-migrations.md",
+            "past_incidents/missing-checkout-column.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/database-migrations.md",
+            "past_incidents/missing-checkout-column.md",
+            "architecture/checkout-service.md",
+            "past_incidents/catalog-n-plus-one.md",
+            "past_incidents/duplicate-refund-jobs.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 2429.3139999999767,
+          "rerank_fallback": false
+        },
+        {
+          "query": "new release caused errors and we need the previous image without reversing schema",
+          "relevant_sources": [
+            "runbooks/deployment-rollback.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/deployment-rollback.md",
+            "runbooks/database-migrations.md",
+            "past_incidents/missing-checkout-column.md",
+            "past_incidents/duplicate-refund-jobs.md",
+            "past_incidents/catalog-n-plus-one.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 1602.9888000002757,
+          "rerank_fallback": false
+        },
+        {
+          "query": "tokens fail with invalid_audience after configuration rollout",
+          "relevant_sources": [
+            "runbooks/authentication-configuration.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/authentication-configuration.md",
+            "past_incidents/missing-checkout-column.md",
+            "architecture/tenant-authorization.md",
+            "runbooks/database-migrations.md",
+            "past_incidents/duplicate-refund-jobs.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 2651.036899999781,
+          "rerank_fallback": false
+        },
+        {
+          "query": "payment provider read timeout retries might create duplicate charges",
+          "relevant_sources": [
+            "runbooks/external-api-timeouts.md",
+            "architecture/checkout-service.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/duplicate-refund-jobs.md",
+            "runbooks/external-api-timeouts.md",
+            "architecture/checkout-service.md",
+            "architecture/job-execution.md",
+            "past_incidents/catalog-n-plus-one.md"
+          ],
+          "hit_at_1": false,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 0.5,
+          "latency_ms": 1450.6129999999757,
+          "rerank_fallback": false
+        },
+        {
+          "query": "where is the checkout outbox event written and which statuses are valid",
+          "relevant_sources": [
+            "architecture/checkout-service.md"
+          ],
+          "retrieved_sources": [
+            "architecture/checkout-service.md",
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md",
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 2098.647200000414,
+          "rerank_fallback": false
+        },
+        {
+          "query": "refund message ran twice after the visibility lease expired",
+          "relevant_sources": [
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md",
+            "past_incidents/catalog-n-plus-one.md",
+            "runbooks/deployment-rollback.md",
+            "architecture/checkout-service.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 2214.1358999997465,
+          "rerank_fallback": false
+        },
+        {
+          "query": "worker crash redelivers completed work and needs a stable idempotency key",
+          "relevant_sources": [
+            "architecture/job-execution.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md",
+            "architecture/checkout-service.md",
+            "runbooks/external-api-timeouts.md",
+            "past_incidents/missing-checkout-column.md"
+          ],
+          "hit_at_1": false,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 0.5,
+          "latency_ms": 3242.33009999989,
+          "rerank_fallback": false
+        },
+        {
+          "query": "a user can read a record belonging to another organization",
+          "relevant_sources": [
+            "architecture/tenant-authorization.md"
+          ],
+          "retrieved_sources": [
+            "architecture/tenant-authorization.md",
+            "past_incidents/duplicate-refund-jobs.md",
+            "past_incidents/missing-checkout-column.md",
+            "past_incidents/catalog-n-plus-one.md",
+            "architecture/job-execution.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 2791.360899999745,
+          "rerank_fallback": false
+        },
+        {
+          "query": "hundreds of SELECT statements appear while serializing one catalog page",
+          "relevant_sources": [
+            "past_incidents/catalog-n-plus-one.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/catalog-n-plus-one.md",
+            "past_incidents/missing-checkout-column.md",
+            "architecture/checkout-service.md",
+            "architecture/job-execution.md",
+            "past_incidents/duplicate-refund-jobs.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 1502.9256999996505,
+          "rerank_fallback": false
+        },
+        {
+          "query": "deployment pipeline needs a gate comparing expected and applied migration heads",
+          "relevant_sources": [
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md",
+            "runbooks/deployment-rollback.md",
+            "architecture/checkout-service.md",
+            "architecture/job-execution.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 1483.0576999993355,
+          "rerank_fallback": false
+        },
+        {
+          "query": "email analytics failure should not turn a successful payment into HTTP 500",
+          "relevant_sources": [
+            "architecture/checkout-service.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/missing-checkout-column.md",
+            "architecture/checkout-service.md",
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md",
+            "runbooks/database-migrations.md"
+          ],
+          "hit_at_1": false,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 0.5,
+          "latency_ms": 2194.172000000435,
+          "rerank_fallback": false
+        },
+        {
+          "query": "rolling back the application did not restore environment variables",
+          "relevant_sources": [
+            "runbooks/deployment-rollback.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/deployment-rollback.md",
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md",
+            "runbooks/authentication-configuration.md",
+            "past_incidents/duplicate-refund-jobs.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 1669.204499999978,
+          "rerank_fallback": false
+        }
+      ]
+    },
+    {
+      "mode": "hybrid",
+      "source_hit_at_1": 0.75,
+      "source_hit_at_3": 1.0,
+      "source_hit_at_5": 1.0,
+      "mrr": 0.875,
+      "average_latency_ms": 1934.2152166666438,
+      "cases": [
+        {
+          "query": "checkout code references payment_status but production says the column does not exist",
+          "relevant_sources": [
+            "runbooks/database-migrations.md",
+            "past_incidents/missing-checkout-column.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/database-migrations.md",
+            "past_incidents/missing-checkout-column.md",
+            "architecture/checkout-service.md",
+            "past_incidents/catalog-n-plus-one.md",
+            "past_incidents/duplicate-refund-jobs.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 1636.878500000421,
+          "rerank_fallback": false
+        },
+        {
+          "query": "new release caused errors and we need the previous image without reversing schema",
+          "relevant_sources": [
+            "runbooks/deployment-rollback.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/deployment-rollback.md",
+            "runbooks/database-migrations.md",
+            "past_incidents/missing-checkout-column.md",
+            "past_incidents/duplicate-refund-jobs.md",
+            "past_incidents/catalog-n-plus-one.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 1638.4741000001668,
+          "rerank_fallback": false
+        },
+        {
+          "query": "tokens fail with invalid_audience after configuration rollout",
+          "relevant_sources": [
+            "runbooks/authentication-configuration.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/authentication-configuration.md",
+            "past_incidents/missing-checkout-column.md",
+            "architecture/tenant-authorization.md",
+            "runbooks/database-migrations.md",
+            "past_incidents/duplicate-refund-jobs.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 2050.3779000000577,
+          "rerank_fallback": false
+        },
+        {
+          "query": "payment provider read timeout retries might create duplicate charges",
+          "relevant_sources": [
+            "runbooks/external-api-timeouts.md",
+            "architecture/checkout-service.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/duplicate-refund-jobs.md",
+            "runbooks/external-api-timeouts.md",
+            "architecture/checkout-service.md",
+            "architecture/job-execution.md",
+            "past_incidents/catalog-n-plus-one.md"
+          ],
+          "hit_at_1": false,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 0.5,
+          "latency_ms": 2149.253900000076,
+          "rerank_fallback": false
+        },
+        {
+          "query": "where is the checkout outbox event written and which statuses are valid",
+          "relevant_sources": [
+            "architecture/checkout-service.md"
+          ],
+          "retrieved_sources": [
+            "architecture/checkout-service.md",
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md",
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 1622.4770999997418,
+          "rerank_fallback": false
+        },
+        {
+          "query": "refund message ran twice after the visibility lease expired",
+          "relevant_sources": [
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md",
+            "past_incidents/catalog-n-plus-one.md",
+            "runbooks/deployment-rollback.md",
+            "architecture/checkout-service.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 1346.4712999993935,
+          "rerank_fallback": false
+        },
+        {
+          "query": "worker crash redelivers completed work and needs a stable idempotency key",
+          "relevant_sources": [
+            "architecture/job-execution.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md",
+            "architecture/checkout-service.md",
+            "runbooks/external-api-timeouts.md",
+            "past_incidents/missing-checkout-column.md"
+          ],
+          "hit_at_1": false,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 0.5,
+          "latency_ms": 2028.098200000386,
+          "rerank_fallback": false
+        },
+        {
+          "query": "a user can read a record belonging to another organization",
+          "relevant_sources": [
+            "architecture/tenant-authorization.md"
+          ],
+          "retrieved_sources": [
+            "architecture/tenant-authorization.md",
+            "past_incidents/duplicate-refund-jobs.md",
+            "past_incidents/missing-checkout-column.md",
+            "past_incidents/catalog-n-plus-one.md",
+            "architecture/job-execution.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 1988.1036999995558,
+          "rerank_fallback": false
+        },
+        {
+          "query": "hundreds of SELECT statements appear while serializing one catalog page",
+          "relevant_sources": [
+            "past_incidents/catalog-n-plus-one.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/catalog-n-plus-one.md",
+            "past_incidents/missing-checkout-column.md",
+            "architecture/checkout-service.md",
+            "architecture/job-execution.md",
+            "past_incidents/duplicate-refund-jobs.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 2910.5361999991146,
+          "rerank_fallback": false
+        },
+        {
+          "query": "deployment pipeline needs a gate comparing expected and applied migration heads",
+          "relevant_sources": [
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md",
+            "runbooks/deployment-rollback.md",
+            "architecture/checkout-service.md",
+            "architecture/job-execution.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 2082.569500000318,
+          "rerank_fallback": false
+        },
+        {
+          "query": "email analytics failure should not turn a successful payment into HTTP 500",
+          "relevant_sources": [
+            "architecture/checkout-service.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/missing-checkout-column.md",
+            "architecture/checkout-service.md",
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md",
+            "runbooks/database-migrations.md"
+          ],
+          "hit_at_1": false,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 0.5,
+          "latency_ms": 2252.4828000005073,
+          "rerank_fallback": false
+        },
+        {
+          "query": "rolling back the application did not restore environment variables",
+          "relevant_sources": [
+            "runbooks/deployment-rollback.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/deployment-rollback.md",
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md",
+            "runbooks/authentication-configuration.md",
+            "past_incidents/duplicate-refund-jobs.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 1504.8593999999866,
+          "rerank_fallback": false
+        }
+      ]
+    },
+    {
+      "mode": "reranked",
+      "source_hit_at_1": 0.9166666666666666,
+      "source_hit_at_3": 1.0,
+      "source_hit_at_5": 1.0,
+      "mrr": 0.9583333333333334,
+      "average_latency_ms": 4874.125533333351,
+      "cases": [
+        {
+          "query": "checkout code references payment_status but production says the column does not exist",
+          "relevant_sources": [
+            "runbooks/database-migrations.md",
+            "past_incidents/missing-checkout-column.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/database-migrations.md",
+            "past_incidents/missing-checkout-column.md",
+            "architecture/checkout-service.md",
+            "runbooks/deployment-rollback.md",
+            "past_incidents/catalog-n-plus-one.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 4733.605600000374,
+          "rerank_fallback": false
+        },
+        {
+          "query": "new release caused errors and we need the previous image without reversing schema",
+          "relevant_sources": [
+            "runbooks/deployment-rollback.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/deployment-rollback.md",
+            "runbooks/database-migrations.md",
+            "past_incidents/missing-checkout-column.md",
+            "architecture/checkout-service.md",
+            "architecture/job-execution.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 4876.014799999211,
+          "rerank_fallback": false
+        },
+        {
+          "query": "tokens fail with invalid_audience after configuration rollout",
+          "relevant_sources": [
+            "runbooks/authentication-configuration.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/authentication-configuration.md",
+            "runbooks/deployment-rollback.md",
+            "runbooks/database-migrations.md",
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/external-api-timeouts.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 4251.985400000194,
+          "rerank_fallback": false
+        },
+        {
+          "query": "payment provider read timeout retries might create duplicate charges",
+          "relevant_sources": [
+            "runbooks/external-api-timeouts.md",
+            "architecture/checkout-service.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/external-api-timeouts.md",
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md",
+            "architecture/checkout-service.md",
+            "past_incidents/catalog-n-plus-one.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 4460.44080000047,
+          "rerank_fallback": false
+        },
+        {
+          "query": "where is the checkout outbox event written and which statuses are valid",
+          "relevant_sources": [
+            "architecture/checkout-service.md"
+          ],
+          "retrieved_sources": [
+            "architecture/checkout-service.md",
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md",
+            "runbooks/deployment-rollback.md",
+            "architecture/job-execution.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 5759.8981000001,
+          "rerank_fallback": false
+        },
+        {
+          "query": "refund message ran twice after the visibility lease expired",
+          "relevant_sources": [
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md",
+            "runbooks/external-api-timeouts.md",
+            "architecture/checkout-service.md",
+            "runbooks/deployment-rollback.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 3968.7432000000626,
+          "rerank_fallback": false
+        },
+        {
+          "query": "worker crash redelivers completed work and needs a stable idempotency key",
+          "relevant_sources": [
+            "architecture/job-execution.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/duplicate-refund-jobs.md",
+            "architecture/job-execution.md",
+            "architecture/checkout-service.md",
+            "runbooks/external-api-timeouts.md",
+            "past_incidents/missing-checkout-column.md"
+          ],
+          "hit_at_1": false,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 0.5,
+          "latency_ms": 4020.926399999553,
+          "rerank_fallback": false
+        },
+        {
+          "query": "a user can read a record belonging to another organization",
+          "relevant_sources": [
+            "architecture/tenant-authorization.md"
+          ],
+          "retrieved_sources": [
+            "architecture/tenant-authorization.md",
+            "runbooks/database-migrations.md",
+            "runbooks/authentication-configuration.md",
+            "runbooks/external-api-timeouts.md",
+            "runbooks/deployment-rollback.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 4711.888599999838,
+          "rerank_fallback": false
+        },
+        {
+          "query": "hundreds of SELECT statements appear while serializing one catalog page",
+          "relevant_sources": [
+            "past_incidents/catalog-n-plus-one.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/catalog-n-plus-one.md",
+            "architecture/checkout-service.md",
+            "architecture/job-execution.md",
+            "past_incidents/duplicate-refund-jobs.md",
+            "runbooks/database-migrations.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 6972.696900000301,
+          "rerank_fallback": false
+        },
+        {
+          "query": "deployment pipeline needs a gate comparing expected and applied migration heads",
+          "relevant_sources": [
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md"
+          ],
+          "retrieved_sources": [
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md",
+            "runbooks/deployment-rollback.md",
+            "architecture/checkout-service.md",
+            "architecture/job-execution.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 5701.278600000478,
+          "rerank_fallback": false
+        },
+        {
+          "query": "email analytics failure should not turn a successful payment into HTTP 500",
+          "relevant_sources": [
+            "architecture/checkout-service.md"
+          ],
+          "retrieved_sources": [
+            "architecture/checkout-service.md",
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md",
+            "runbooks/deployment-rollback.md",
+            "architecture/job-execution.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 4735.450700000001,
+          "rerank_fallback": false
+        },
+        {
+          "query": "rolling back the application did not restore environment variables",
+          "relevant_sources": [
+            "runbooks/deployment-rollback.md"
+          ],
+          "retrieved_sources": [
+            "runbooks/deployment-rollback.md",
+            "past_incidents/missing-checkout-column.md",
+            "runbooks/database-migrations.md",
+            "runbooks/authentication-configuration.md",
+            "past_incidents/duplicate-refund-jobs.md"
+          ],
+          "hit_at_1": true,
+          "hit_at_3": true,
+          "hit_at_5": true,
+          "reciprocal_rank": 1.0,
+          "latency_ms": 4296.577299999626,
+          "rerank_fallback": false
+        }
+      ]
+    }
+  ]
+}

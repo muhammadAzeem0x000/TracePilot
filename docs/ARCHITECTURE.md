@@ -52,6 +52,8 @@ corpus is too small to claim a speed benefit over an exact scan.
 6. `replace_knowledge_source` updates the source and replaces all chunks in one transaction.
 
 Embedding happens before replacement, so provider failure leaves the last valid source intact.
+The live corpus produced one chunk per concise document (10 total, 128-222 approximate tokens each).
+The chunker is not hardcoded to that outcome; longer sources split at the configured 350-token bound.
 
 ## Retrieval and RAG flow
 
@@ -81,6 +83,23 @@ Embedding count/dimension errors stop ingestion before replacement. Provider fai
 Reranker provider/validation failures log a fallback and preserve hybrid results. Tool argument,
 retrieval, persistence, or final-output failures mark an investigation failed rather than storing a
 false completed result. Secrets and raw provider payloads are not logged.
+
+## Live verification snapshot (2026-08-05)
+
+- Supabase pgvector `0.8.2`, `vector(768)`, HNSW cosine index, GIN full-text index, and all three RPCs
+  were queried directly.
+- Ten fictional sources and ten chunks were stored under `muhammadAzeem0x000/TracePilot`; every
+  vector reported 768 dimensions. The unchanged second ingestion skipped 10/10 sources.
+- A 300-token override selected two chunks totaling 297 tokens, proving context budget enforcement.
+- Investigation `3aa30109-98b0-46b9-9b1e-21eddcc5d59f` persisted Evidence before completion:
+  13 total rows, 10 knowledge rows, and three cited knowledge rows with valid ownership.
+- The browser rendered RUNBOOK, ARCHITECTURE, and PAST INCIDENT labels, retrieval diagnostics, and
+  separate factual/model panels with no console warning or error.
+
+The original replacement RPC used an unqualified `source_id` inside a `RETURNS TABLE (source_id ...)`
+PL/pgSQL function. Live ingestion exposed the resulting ambiguous-column error. The forward repair
+migration aliases `knowledge_chunks` and qualifies `knowledge_chunk.source_id`; migration history was
+not rewritten.
 
 ## Async boundaries
 

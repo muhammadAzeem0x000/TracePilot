@@ -86,3 +86,36 @@ operator lives in `extensions`. PostgreSQL rolled back the transaction; qualifyi
 `OPERATOR(extensions.<=>)` fixed the forward migration. Tests then caught a duplicate `metadata`
 keyword while converting chunks and Python truthiness discarding a valid `0.0` RRF component score.
 Both defects were fixed before live ingestion.
+
+Live ingestion later exposed a third SQL defect: `replace_knowledge_source` returns a column named
+`source_id`, making an unqualified `delete ... where source_id = stored_source_id` ambiguous in
+PL/pgSQL. PostgreSQL rejected the RPC atomically, so no partial source was stored. The forward
+`202608060002_day3_fix_knowledge_replacement.sql` migration aliases and qualifies the table column;
+the retry created all 10 sources and the next pass skipped all 10.
+
+The Day 2 live verifier also advertised the new `search_knowledge` definition while wiring only the
+GitHub executor. A live model correctly selected the advertised tool and exposed the mismatch.
+`InvestigationService` now accepts an explicit definition set, and the GitHub-only verifier passes
+only the five GitHub definitions. A regression test checks that advertised authority matches the
+executor.
+
+## What the fixed benchmark actually measured
+
+| Mode | Hit@1 | Hit@3 | Hit@5 | MRR | Average latency |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Semantic | 0.750 | 1.000 | 1.000 | 0.875 | 2,110.8 ms |
+| Hybrid RRF | 0.750 | 1.000 | 1.000 | 0.875 | 1,934.2 ms |
+| Hybrid + rerank | 0.917 | 1.000 | 1.000 | 0.958 | 4,874.1 ms |
+
+Semantic and hybrid returned the same relevance ranks for all 12 cases, so there is no benchmark case
+where either beat the other. A separate exact-identifier probe (`payment_status UndefinedColumn`)
+proved lexical SQL worked and moved the past incident ahead of the runbook, but it did not improve the
+aggregate benchmark. Reranking promoted the relevant external-timeout runbook and checkout
+architecture cases from reciprocal rank 0.5 to 1.0. It made no relevant source rank worse in this run.
+The job-redelivery query still ranked the duplicate-refund incident above the expected general job
+architecture source in all modes, leaving the sole reranked Hit@1 failure. Per-query lists remain in
+`docs/evaluation/retrieval_evaluation.json`; the ground truth was not changed.
+
+The latency result is the clearest trade-off: reranking improved top-rank relevance but added roughly
+2.9 seconds compared with RRF. Hit@3 and Hit@5 were already perfect, so the extra call improved only
+ordering, not whether relevant material reached the five-chunk context.
