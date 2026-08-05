@@ -16,10 +16,10 @@ class PreliminaryInvestigationResult(BaseModel):
 
     summary: str = Field(min_length=1, max_length=4_000)
     confidence: float = Field(ge=0.0, le=1.0)
-    suspected_change: str | None = Field(default=None, max_length=2_000)
-    supporting_evidence_ids: list[UUID] = Field(default_factory=list, max_length=20)
-    missing_information: list[str] = Field(default_factory=list, max_length=20)
-    recommended_next_steps: list[str] = Field(default_factory=list, max_length=20)
+    suspected_change: str | None = Field(max_length=2_000)
+    supporting_evidence_ids: list[UUID] = Field(max_length=20)
+    missing_information: list[str] = Field(max_length=20)
+    recommended_next_steps: list[str] = Field(max_length=20)
 
     @field_validator("supporting_evidence_ids")
     @classmethod
