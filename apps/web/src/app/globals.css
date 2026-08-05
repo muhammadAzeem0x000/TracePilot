@@ -47,6 +47,7 @@ h2, h3, p { margin-top: 0; }
 
 form { display: grid; gap: 18px; }
 label { display: grid; gap: 7px; font-size: 0.82rem; font-weight: 700; }
+.optional { color: var(--muted); font-weight: 400; }
 input, textarea, select { width: 100%; border: 1px solid #aaa79f; background: white; color: var(--foreground); border-radius: 0; padding: 11px 12px; font: inherit; font-weight: 400; }
 textarea { resize: vertical; }
 input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }

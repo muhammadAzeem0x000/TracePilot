@@ -30,6 +30,7 @@ class SupabaseIncidentRepository:
             "severity": incident.severity.value,
             "status": incident.status.value,
             "started_at": incident.started_at.isoformat(),
+            "repository_full_name": incident.repository_full_name,
         }
         try:
             records = await self._client.request(

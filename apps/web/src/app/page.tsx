@@ -35,6 +35,7 @@ export default function Home() {
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState<Severity>("medium");
   const [startedAt, setStartedAt] = useState(currentLocalDatetime);
+  const [repositoryFullName, setRepositoryFullName] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +72,7 @@ export default function Home() {
         description,
         severity,
         started_at: parsedStartedAt.toISOString(),
+        repository_full_name: repositoryFullName || undefined,
       });
       setIncidents((current) => [created, ...current]);
       setSelected(created);
@@ -78,6 +80,7 @@ export default function Home() {
       setDescription("");
       setSeverity("medium");
       setStartedAt(currentLocalDatetime());
+      setRepositoryFullName("");
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "Unable to create incident");
     } finally {
@@ -135,6 +138,15 @@ export default function Home() {
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="What is failing, and who is affected?"
+              />
+            </label>
+            <label>
+              GitHub repository <span className="optional">optional</span>
+              <input
+                pattern="[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}"
+                value={repositoryFullName}
+                onChange={(event) => setRepositoryFullName(event.target.value)}
+                placeholder="owner/repository"
               />
             </label>
             <div className="form-row">
@@ -206,6 +218,9 @@ export default function Home() {
               <h3>{selected.title}</h3>
               <p>{selected.description}</p>
               <dl>
+                {selected.repository_full_name && (
+                  <div><dt>Repository</dt><dd className="mono">{selected.repository_full_name}</dd></div>
+                )}
                 <div><dt>Started</dt><dd>{formatDate(selected.started_at)}</dd></div>
                 <div><dt>Created</dt><dd>{formatDate(selected.created_at)}</dd></div>
                 <div><dt>Incident ID</dt><dd className="mono">{selected.id}</dd></div>

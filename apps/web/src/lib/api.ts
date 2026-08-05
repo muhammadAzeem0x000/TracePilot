@@ -13,6 +13,7 @@ export interface Incident {
   started_at: string;
   created_at: string;
   updated_at: string;
+  repository_full_name: string | null;
 }
 
 export interface IncidentCreate {
@@ -20,6 +21,7 @@ export interface IncidentCreate {
   description: string;
   severity: Severity;
   started_at: string;
+  repository_full_name?: string;
 }
 
 interface IncidentListResponse {
@@ -62,4 +64,3 @@ export async function getIncident(incidentId: string): Promise<Incident> {
   });
   return parseResponse<Incident>(response);
 }
-

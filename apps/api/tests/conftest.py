@@ -26,6 +26,7 @@ class FakeIncidentRepository:
             started_at=incident.started_at,
             created_at=now,
             updated_at=now,
+            repository_full_name=incident.repository_full_name,
         )
         self.incidents[stored.id] = stored
         return stored
@@ -51,4 +52,3 @@ def client(repository: FakeIncidentRepository) -> Iterator[TestClient]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
-

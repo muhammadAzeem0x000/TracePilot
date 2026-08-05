@@ -13,6 +13,7 @@ VALID_INCIDENT = {
     "description": "Customers receive HTTP 500 during checkout.",
     "severity": "high",
     "started_at": "2026-08-04T08:30:00Z",
+    "repository_full_name": "openai/openai-python",
 }
 
 
@@ -37,7 +38,12 @@ def test_successful_incident_creation(client: TestClient) -> None:
 
 @pytest.mark.parametrize(
     ("field", "value"),
-    [("severity", "catastrophic"), ("status", "closed"), ("title", "")],
+    [
+        ("severity", "catastrophic"),
+        ("status", "closed"),
+        ("title", ""),
+        ("repository_full_name", "not-a-repository"),
+    ],
 )
 def test_invalid_incident_validation(
     client: TestClient,
@@ -105,4 +111,3 @@ def test_database_failure_returns_503() -> None:
 
     assert response.status_code == 503
     assert response.json() == {"detail": "Incident storage is temporarily unavailable"}
-

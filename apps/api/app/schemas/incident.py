@@ -1,8 +1,17 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints
+
+RepositoryFullName = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$",
+    ),
+]
 
 
 class Severity(StrEnum):
@@ -26,6 +35,7 @@ class IncidentCreate(BaseModel):
     severity: Severity
     status: IncidentStatus = IncidentStatus.OPEN
     started_at: AwareDatetime
+    repository_full_name: RepositoryFullName | None = None
 
 
 class IncidentResponse(BaseModel):
@@ -39,6 +49,7 @@ class IncidentResponse(BaseModel):
     started_at: AwareDatetime
     created_at: AwareDatetime
     updated_at: AwareDatetime
+    repository_full_name: RepositoryFullName | None = None
 
 
 class IncidentListResponse(BaseModel):
@@ -54,4 +65,3 @@ class HealthResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
-
