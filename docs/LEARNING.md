@@ -1,69 +1,88 @@
-# Day-2 Engineering Notes
+# TracePilot Engineering Notes - Day 3
 
-These notes refer to decisions and failures encountered in this repository.
+These notes refer to concrete code and failures in this repository.
 
-## Pydantic validation must cover both model calls
+## Embeddings need a database-level dimensional contract
 
-`schemas/github.py` gives each tool an argument model with `extra="forbid"`; valid JSON with a
-hallucinated field is still rejected. `schemas/investigation.py` separately validates final JSON,
-including required fields, UUID syntax, confidence `0..1`, duplicate citations, bounded list items,
-and the rule that confidence above `0.7` requires cited evidence. Schema validation alone cannot
-prove a UUID is real, so `InvestigationService._validate_evidence_references` performs the database
-ownership check.
+`app/ai/embeddings.py` requests `gemini-embedding-001` with 768 output dimensions, rejects a wrong
+count, non-finite values, zero magnitude, or a wrong dimension, then L2-normalizes vectors. Settings
+also refuses a configured dimension other than the migration's `vector(768)`. Without both checks, a
+model/config change would surface later as an opaque database error. Cosine similarity ranks vector
+direction; it does not prove relevance or that a model understands an incident.
+
+## A document is usually too coarse and a sentence is often too small
+
+`DeterministicChunker` uses paragraphs and sentences before falling back to words. A whole runbook
+would retrieve unrelated sections and consume the context budget. Tiny chunks can lose the
+condition/action relationship; huge chunks reduce precision and cost more context. Defaults of 350
+approximate tokens with 50-token overlap preserve modest boundary context. Overlap costs storage and
+can create near-duplicates, so final selection deduplicates chunk UUIDs.
+
+## Semantic-only retrieval misses exact engineering identifiers
+
+Queries use Gemini's separate `RETRIEVAL_QUERY` task. This helps paraphrases, while the generated
+PostgreSQL `tsvector` is direct for `payment_status`, error codes, and function-like names. Hybrid
+mode runs repository-filtered semantic and lexical RPCs concurrently. Scores remain inspectable, but
+RRF uses ranks (`k=60`) because cosine similarity and `ts_rank_cd` are not on a shared scale.
+
+## Reranking is an experiment with a safe off-ramp
+
+`rerank_v1.py` gives the LLM only candidate UUIDs and bounded untrusted text. `RerankResult` and
+`KnowledgeReranker` require exact set equality and reject invented, duplicate, or missing IDs.
+Provider/validation failure keeps RRF order with `rerank_fallback=true`. This matters because a second
+model call adds latency/cost and can still make retrieval worse.
+
+## Top-k and a context budget solve different problems
+
+The repository retrieves up to 12 candidates per channel, `search_knowledge` permits at most six
+final chunks, and `ContextAssembler` enforces 1,800 approximate tokens. Top-k bounds source count;
+the budget bounds prompt weight. Retrieving more can crowd out incident/GitHub facts and increases
+exposure to instruction-like repository text.
+
+## Retrieval evaluation must expose individual failures
+
+`knowledge/retrieval_benchmark.json` fixes 12 queries and relevant source references. The evaluation
+runner calculates source hit@1/3/5, MRR, latency, and retains every result list. That reveals semantic
+wins, lexical rescues, and reranking regressions rather than hiding them in one average. It evaluates
+evidence selection, not whether the final LLM hypothesis is correct.
+
+## Retrieved text crosses the same trust boundary as GitHub text
+
+`KnowledgeToolExecutor` gets repository scope only from `ToolExecutionContext`; strict arguments reject
+a model-supplied repository. Selected chunks are stored as Evidence before their UUIDs reach the LLM.
+The prompt labels knowledge as data, while the hardcoded allowlist and Python citation checks enforce
+the boundary independently of model obedience.
+
+## Pydantic validation occurs at every untrusted boundary
+
+Tool arguments, embedding responses, Supabase rows, reranker JSON, and final conclusions use separate
+models. A syntactically valid UUID is not enough: `InvestigationService` asks the Evidence repository
+to prove the complete cited set belongs to the current incident and investigation.
 
 ## Python typing and TypeScript protect different compositions
 
-Python `Protocol` boundaries let strict mypy check that the GitHub client, LLM provider, and three
-repositories compose without importing concrete implementations into the service. Pydantic is still
-needed at runtime for HTTP, GitHub, provider, and PostgREST data. TypeScript interfaces in
-`web/src/lib/api.ts` prevent components from mixing Evidence and Investigation shapes, but they do
-not runtime-validate the server. A generated/runtime browser contract could become worthwhile if the
-API grows beyond this five-day project.
+Python `Protocol` boundaries let strict mypy check providers/repositories without coupling services to
+concrete clients; Pydantic still validates runtime input. TypeScript contracts keep evidence and
+hypothesis shapes separate in the browser, but do not runtime-validate server JSON. Generated browser
+contracts may become worthwhile if the API grows beyond five days.
 
-## FastAPI dependency injection exposed a configuration trade-off
+## FastAPI dependency injection keeps live providers out of tests
 
-`api/dependencies.py` constructs one Supabase client per request dependency graph and injects
-repository protocols into services. Tests override repositories or the investigation service, so 26
-tests exercise HTTP/orchestration without remote calls. The current investigation read routes share
-the same full service dependency as the run route, so GitHub/LLM configuration is resolved for reads;
-splitting a query service would improve degraded-mode reads if the API grows.
+`api/dependencies.py` composes Supabase, GitHub, Gemini, DeepSeek, retrieval, tools, and services.
+Tests replace those boundaries with typed in-memory doubles, so ordinary pytest makes no external
+calls. One remaining trade-off from Day 2 is that investigation read routes build the full provider
+graph; a separate query service would improve degraded-mode reads in a larger system.
 
-## Async adds value only around actual waiting
+## Async is valuable at I/O boundaries, not everywhere
 
-Supabase, GitHub, and provider calls use `httpx.AsyncClient`, allowing FastAPI to serve other work
-while each request waits on I/O. Tool validation, prompt building, Pydantic parsing, allowlist checks,
-and evidence/citation set comparison are synchronous. Making those helpers async would not improve
-concurrency. Day 2 still holds the HTTP request open for the full workflow; long-running resilience
-requires a future background design.
+Supabase, GitHub, Gemini, and chat calls are async. Semantic and lexical searches run concurrently in
+hybrid mode. Hashing, chunking, RRF, parsing, context selection, and citation set comparison remain
+synchronous. The investigation request still waits for completion; background execution is deferred.
 
-## Repository/service separation earned its cost through safety checks
+## Failure-driven fixes during implementation
 
-Repositories know PostgREST filters and remote response shapes. `InvestigationService` knows that a
-missing repository is a use-case conflict, a failed dependency must mark state failed, a tool loop is
-bounded, and citations must belong to one context. `GitHubToolExecutor` sits between them because its
-single job—validate tool authority, execute, and persist before returning—is security-sensitive and
-independently testable. A generic tool framework would add no value today.
-
-## Stable HTTP errors must not pretend a failed investigation completed
-
-Input errors remain FastAPI `422`; missing incidents/investigations are `404`; missing repository
-context is `409`; storage errors are `503`; and a created investigation that fails during GitHub,
-provider, tool, or output processing is persisted as `failed` and returned as `502` with its UUID.
-Provider payloads and tokens are never returned. The failure state update is attempted separately so
-the original error is not silently swallowed if that second database write also fails.
-
-## Migration history is append-only once remote state exists
-
-During verification, the Day-2 foundation migration was already recorded remotely. A local edit had
-added runtime columns to that historical file, which would have created drift. The fix restored the
-applied migration exactly and added `202608050002_day2_investigation_runtime_metadata.sql` as a new
-forward migration. The remote schema was then checked for eight Day-2 investigation columns, two
-indexes, and the update trigger.
-
-## GitHub content needs both size and instruction boundaries
-
-`integrations/github.py` selects application-owned fields, caps list sizes, limits files, truncates
-messages/descriptions/patches, and never sends raw API payloads to the model. The versioned prompt and
-tool response label repository text as untrusted data. This does not make repository content safe in
-an absolute sense; it ensures content cannot expand the hardcoded tool allowlist or directly execute
-anything.
+The first remote migration failed because its functions set `search_path=''` while the pgvector
+operator lives in `extensions`. PostgreSQL rolled back the transaction; qualifying it as
+`OPERATOR(extensions.<=>)` fixed the forward migration. Tests then caught a duplicate `metadata`
+keyword while converting chunks and Python truthiness discarding a valid `0.0` RRF component score.
+Both defects were fixed before live ingestion.

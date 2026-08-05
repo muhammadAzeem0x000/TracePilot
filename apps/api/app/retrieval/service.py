@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from uuid import UUID
 
 from app.ai.embeddings import EmbeddingProvider, EmbeddingTask
 from app.ai.provider import LLMProviderError
@@ -103,8 +104,8 @@ class KnowledgeRetrievalService:
         semantic: list[KnowledgeSearchResult],
         lexical: list[KnowledgeSearchResult],
     ) -> list[KnowledgeSearchResult]:
-        by_id: dict[object, KnowledgeSearchResult] = {}
-        scores: dict[object, float] = {}
+        by_id: dict[UUID, KnowledgeSearchResult] = {}
+        scores: dict[UUID, float] = {}
         for candidate in [*semantic, *lexical]:
             existing = by_id.get(candidate.chunk_id)
             if existing is None:
@@ -113,10 +114,26 @@ class KnowledgeRetrievalService:
             else:
                 by_id[candidate.chunk_id] = existing.model_copy(
                     update={
-                        "semantic_score": existing.semantic_score or candidate.semantic_score,
-                        "semantic_rank": existing.semantic_rank or candidate.semantic_rank,
-                        "lexical_score": existing.lexical_score or candidate.lexical_score,
-                        "lexical_rank": existing.lexical_rank or candidate.lexical_rank,
+                        "semantic_score": (
+                            existing.semantic_score
+                            if existing.semantic_score is not None
+                            else candidate.semantic_score
+                        ),
+                        "semantic_rank": (
+                            existing.semantic_rank
+                            if existing.semantic_rank is not None
+                            else candidate.semantic_rank
+                        ),
+                        "lexical_score": (
+                            existing.lexical_score
+                            if existing.lexical_score is not None
+                            else candidate.lexical_score
+                        ),
+                        "lexical_rank": (
+                            existing.lexical_rank
+                            if existing.lexical_rank is not None
+                            else candidate.lexical_rank
+                        ),
                     }
                 )
             rank = candidate.semantic_rank or candidate.lexical_rank

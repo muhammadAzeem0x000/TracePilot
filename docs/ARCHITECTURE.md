@@ -1,73 +1,90 @@
-# TracePilot Architecture — Day 2
+# TracePilot Architecture - Day 3
 
-TracePilot remains a small monorepo: one Next.js application, one FastAPI service, and one
-Supabase PostgreSQL database. Day 2 adds a bounded LLM/tool workflow inside the existing API;
-it does not add a worker, queue, orchestration framework, or another service.
+TracePilot remains one Next.js app, one FastAPI service, and one Supabase PostgreSQL database.
+Day 3 extends the existing deterministic investigation loop with repository-scoped knowledge
+retrieval; it does not add another service or orchestration framework.
 
 ## Responsibilities
 
 ### Next.js (`apps/web`)
 
-`src/lib/api.ts` is the browser contract boundary. The page creates incidents through FastAPI,
-loads investigations/evidence for the selected incident, and starts a synchronous investigation.
-It renders two deliberately different panels: persisted `EVIDENCE` and the
-`AI PRELIMINARY HYPOTHESIS`. The browser has no Supabase, GitHub, or LLM credential.
+`src/lib/api.ts` is the browser contract boundary. The incident detail view runs investigations
+and renders two distinct regions: `COLLECTED EVIDENCE` and `AI PRELIMINARY HYPOTHESIS`. Knowledge
+cards label their original type (`RUNBOOK`, `ARCHITECTURE`, or `PAST INCIDENT`) and expose ranking
+metadata in a details element. The browser has no database or provider secret.
 
 ### FastAPI (`apps/api`)
 
-- `app/api/routes.py` owns HTTP status codes and response schemas.
-- `app/services/investigations.py` owns the deterministic orchestration loop and failure state.
-- `app/ai/provider.py` is the small OpenAI-compatible provider boundary.
-- `app/ai/prompts/investigation_v1.py` versions the prompt and prompt-injection boundary.
-- `app/tools/github.py` is the only tool dispatcher. It validates the name and Pydantic arguments,
-  invokes Python, and persists the normalized result before returning it to the model.
-- `app/integrations/github.py` performs only GitHub `GET` requests and converts remote payloads
-  into application-owned schemas.
-- repository modules isolate PostgREST paths and response validation.
-
-The service logs investigation lifecycle, model calls, requested tool names, success/failure,
-and evidence counts. It does not log tokens, provider payloads, raw repository content, or keys.
+- `app/knowledge/chunking.py` produces deterministic bounded chunks without model calls.
+- `app/ai/embeddings.py` owns the small Gemini embedding boundary and output validation.
+- `app/services/knowledge_ingestion.py` hashes, skips, embeds, and replaces sources.
+- `app/repositories/knowledge.py` owns PostgREST/RPC persistence and retrieval calls.
+- `app/retrieval/service.py` runs semantic/lexical retrieval, RRF fusion, and safe rerank fallback.
+- `app/retrieval/reranking.py` validates that the model returns every known candidate ID once.
+- `app/retrieval/context.py` deduplicates and enforces the final approximate-token budget.
+- `app/tools/knowledge.py` fixes scope from the Incident and persists chunks as Evidence.
+- `app/services/investigations.py` retains the six-call deterministic tool loop and citation checks.
+- `app/api/routes.py` exposes the product APIs and one read-only developer search endpoint.
 
 ### Supabase PostgreSQL
 
-`Incident` owns operational facts and optional `repository_full_name`. `Evidence` owns retrieved
-GitHub facts and identifies both its incident and investigation. `Investigation` owns lifecycle
-state and the validated model conclusion. Evidence and hypothesis remain separate records, so a
-consumer never has to infer which text came from GitHub and which came from a model.
+`knowledge_sources` stores repository scope, provenance, stable source reference, and content hash.
+`knowledge_chunks` stores ordered text chunks, token counts, metadata, generated `tsvector`, and
+`vector(768)` embeddings. PostgreSQL performs both retrieval channels:
 
-RLS is enabled and grants are revoked for `anon` and `authenticated`. FastAPI uses the
-server-only key. No browser database policies exist yet because the browser is intentionally not
-a database client.
+- cosine-distance semantic search over pgvector, with an HNSW cosine index;
+- `websearch_to_tsquery` lexical search over a generated weighted `tsvector`, with a GIN index.
 
-## Investigation request flow
+Both server-only SQL functions require `filter_repository`. RLS is enabled and public roles have no
+table or function access. The HNSW index demonstrates the scalable access path; this ten-document
+corpus is too small to claim a speed benefit over an exact scan.
 
-1. `POST /api/v1/incidents/{id}/investigations` loads the incident and requires repository context.
-2. The investigation repository creates an `in_progress` row with prompt and model identifiers.
-3. The provider receives the incident prompt and five read-only tool definitions.
-4. If the model proposes a call, `GitHubToolExecutor` checks the exact allowlist and validates JSON
-   arguments with models that forbid extra fields.
-5. Python calls the configured incident repository through GitHub REST. Repository content is
-   treated as untrusted data and cannot redefine tool permissions.
-6. The normalized result is stored as one or more `Evidence` rows. Only bounded fields/content and
-   the new evidence UUIDs return to the model.
-7. The loop permits at most six total tool calls. A conclusion before any evidence call is invalid.
-8. `PreliminaryInvestigationResult` parses the final JSON. One correction attempt is allowed.
-9. The evidence repository queries every citation using incident ID, investigation ID, and UUID.
-   Set equality must hold; invented or cross-context UUIDs fail validation.
-10. Only then is the investigation marked `completed`. Any critical failure attempts to mark the row
-    `failed` and the API returns `502` rather than a false conclusion.
+## Ingestion flow
 
-## Why business writes do not go directly to Supabase
+1. `scripts/ingest_knowledge.py` maps files under `runbooks/`, `architecture/`, and
+   `past_incidents/` to typed documents.
+2. Content is newline-normalized and SHA-256 hashed.
+3. An equal `(repository_full_name, source_reference, content_hash)` returns `skipped` before an
+   embedding request.
+4. Changed text is split into deterministic paragraph/sentence-aware chunks: 350 approximate
+   tokens maximum and 50-token trailing overlap by default.
+5. Gemini creates normalized 768-dimensional document embeddings; count and dimensions are checked.
+6. `replace_knowledge_source` updates the source and replaces all chunks in one transaction.
 
-FastAPI is the enforcement point for incident validation, tool permissions, provider behavior,
-evidence provenance, citation checks, stable HTTP errors, and future authorization. A direct
-browser write would bypass those invariants, expose persistence shape, and risk exposing a
-service-role key. The trade-off is two local processes and explicit TypeScript/Python contract
-coordination, which is appropriate for the workflow under study.
+Embedding happens before replacement, so provider failure leaves the last valid source intact.
+
+## Retrieval and RAG flow
+
+```text
+query
+  +-> Gemini RETRIEVAL_QUERY embedding -> repository-filtered cosine candidates
+  +-> PostgreSQL full-text query       -> repository-filtered lexical candidates
+       -> reciprocal rank fusion (RRF, k=60)
+       -> optional rerank_v1 over bounded candidate IDs/text
+       -> validated IDs or deterministic RRF fallback
+       -> dedupe + top-k + 1,800 approximate-token context budget
+       -> each selected chunk persisted as Evidence
+       -> evidence IDs and bounded content returned to the investigation LLM
+```
+
+RRF combines ordinal ranks because cosine similarity and text-search rank have incompatible scales.
+Raw component scores/ranks and hybrid/rerank ranks remain in typed results and Evidence metadata.
+
+The LLM can provide only `query` and bounded `top_k` to `search_knowledge`; the Pydantic argument
+model forbids a repository field. Python uses `Incident.repository_full_name`. Retrieved document
+text is untrusted data and cannot add tools or alter permissions. The chunk exists as Evidence before
+the model receives its citation UUID, so the Day 2 ownership check remains unchanged.
+
+## Failure behavior
+
+Embedding count/dimension errors stop ingestion before replacement. Provider failures are explicit.
+Reranker provider/validation failures log a fallback and preserve hybrid results. Tool argument,
+retrieval, persistence, or final-output failures mark an investigation failed rather than storing a
+false completed result. Secrets and raw provider payloads are not logged.
 
 ## Async boundaries
 
-GitHub, LLM, and Supabase methods are async because they wait on network I/O. Prompt construction,
-Pydantic parsing, allowlist checks, evidence serialization, and route-independent transformations
-remain synchronous. The Day-2 HTTP request waits for the whole workflow; background execution is
-explicitly deferred.
+Supabase, GitHub, Gemini, and chat-model operations are async network I/O. Semantic and lexical
+database calls run concurrently in hybrid modes. Hashing, deterministic chunking, RRF, Pydantic
+validation, context selection, and evidence/citation set comparisons remain synchronous because
+making CPU-local transformations async would add complexity without concurrency benefit.

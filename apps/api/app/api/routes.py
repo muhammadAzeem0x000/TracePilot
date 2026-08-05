@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -17,6 +18,7 @@ from app.schemas.incident import (
     IncidentCreate,
     IncidentListResponse,
     IncidentResponse,
+    RepositoryFullName,
 )
 from app.schemas.investigation import InvestigationListResponse, InvestigationResponse
 from app.schemas.knowledge import KnowledgeSearchMode, KnowledgeSearchResponse
@@ -175,8 +177,8 @@ async def get_investigation(
 )
 async def search_knowledge(
     service: KnowledgeRetrievalServiceDependency,
-    q: str = Query(min_length=3, max_length=500),
-    repository: str = Query(min_length=3, max_length=140),
+    q: Annotated[str, Query(min_length=3, max_length=500)],
+    repository: Annotated[RepositoryFullName, Query()],
     mode: KnowledgeSearchMode = KnowledgeSearchMode.HYBRID,
     top_k: int = Query(default=5, ge=1, le=10),
 ) -> KnowledgeSearchResponse:

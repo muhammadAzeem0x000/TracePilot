@@ -62,7 +62,7 @@ class KnowledgeIngestionService:
                 )
             embedded_chunks.append(
                 EmbeddedKnowledgeChunk(
-                    **chunk.model_dump(),
+                    **chunk.model_dump(exclude={"metadata"}),
                     embedding=vector,
                     metadata={
                         **chunk.metadata,
