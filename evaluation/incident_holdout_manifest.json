@@ -1,0 +1,14 @@
+{
+  "status": "frozen_before_official_run",
+  "scenario_count": 7,
+  "prompt_version": "investigation_v2",
+  "rerank_prompt_version": "rerank_v1",
+  "max_tool_calls": 6,
+  "final_output_retries": 1,
+  "sha256": {
+    "dataset": "050202b3accc99bc2fdafe0520a54739fc26882c08ab6ffb0e7571acb379fc31",
+    "investigation_prompt": "0297e927cceef796fb274569226787f4585d24819d75b1e95849a385ad79a316",
+    "rerank_prompt": "0fccba13b81c02a6279d3443fda4b9cf488a79b715153b2f9da3a44b982e9312",
+    "tool_definitions": "df37464159756d0ef55589fb09bd95427d3547fd38baf22503084f43de2c6861"
+  }
+}

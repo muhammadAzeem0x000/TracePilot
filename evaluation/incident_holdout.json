@@ -1,0 +1,240 @@
+[
+  {
+    "id": "holdout_webhook_timeout_regression",
+    "incident": {
+      "title": "Webhook deliveries time out after client cleanup",
+      "description": "Outbound webhook success fell from 99% to 61% immediately after a client-library cleanup. Provider dashboards are healthy and failures cluster at exactly two seconds.",
+      "severity": "high",
+      "started_at": "2026-08-06T07:18:00Z",
+      "repository_full_name": "tracepilot/holdout-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/holdout-fixtures@a101010101010101010101010101010101010101",
+        "content": "{\"sha\":\"a101010101010101010101010101010101010101\",\"message\":\"Centralize outbound HTTP client; set default timeout to 2s and remove webhook override\",\"author\":\"lee\",\"timestamp\":\"2026-08-06T06:52:00Z\"}",
+        "metadata": {"sha": "a101010101010101010101010101010101010101"}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/runbooks/external-api-timeouts.md#holdout-1",
+        "content": "Webhook providers may respond in up to eight seconds. A sharp failure boundary at one configured duration usually indicates a client-side timeout rather than provider saturation.",
+        "metadata": {"knowledge_source_type": "runbook"}
+      },
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/holdout-fixtures@a102020202020202020202020202020202020202",
+        "content": "{\"sha\":\"a102020202020202020202020202020202020202\",\"message\":\"Rename webhook delivery metric labels\",\"author\":\"sam\",\"timestamp\":\"2026-08-06T06:30:00Z\"}",
+        "metadata": {"sha": "a102020202020202020202020202020202020202"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/holdout-fixtures@a101010101010101010101010101010101010101",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/holdout-fixtures@a101010101010101010101010101010101010101",
+      "knowledge/runbooks/external-api-timeouts.md#holdout-1"
+    ],
+    "ground_truth": "The shared HTTP client removed the webhook-specific timeout and imposed an insufficient two-second default."
+  },
+  {
+    "id": "holdout_tenant_cache_scope",
+    "incident": {
+      "title": "Tenant users intermittently see another tenant's feature flags",
+      "description": "Feature-flag responses are valid but occasionally belong to the previous tenant handled by the same application instance. The issue began after a caching optimization.",
+      "severity": "critical",
+      "started_at": "2026-08-06T08:05:00Z",
+      "repository_full_name": "tracepilot/holdout-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_pull_requests",
+        "source_type": "github_pull_request",
+        "source_reference": "tracepilot/holdout-fixtures#611",
+        "content": "{\"number\":611,\"title\":\"Cache feature flag documents\",\"description\":\"Use environment name as the cache key because flag names are globally consistent. Tenant is resolved after the cache lookup.\",\"state\":\"closed\",\"merged_at\":\"2026-08-06T07:42:00Z\"}",
+        "metadata": {"pull_number": 611}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/architecture/tenant-authorization.md#holdout-2",
+        "content": "Every cache entry carrying tenant data must include tenant_id in its key. Authorization after retrieval cannot undo cross-tenant cache contamination.",
+        "metadata": {"knowledge_source_type": "architecture"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/holdout-fixtures#611",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/holdout-fixtures#611",
+      "knowledge/architecture/tenant-authorization.md#holdout-2"
+    ],
+    "ground_truth": "PR 611 omitted tenant_id from the feature-flag cache key, allowing cross-tenant cache reuse."
+  },
+  {
+    "id": "holdout_oauth_secret_newline",
+    "incident": {
+      "title": "OAuth token exchange fails only in production",
+      "description": "OAuth callbacks reach the service, but token exchange returns invalid_client in production. Staging remains healthy and the provider reports no outage.",
+      "severity": "high",
+      "started_at": "2026-08-06T08:41:00Z",
+      "repository_full_name": "tracepilot/holdout-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/holdout-fixtures@b201010101010101010101010101010101010101",
+        "content": "{\"sha\":\"b201010101010101010101010101010101010101\",\"message\":\"Read OAuth secret from mounted file without stripping trailing whitespace\",\"author\":\"ivy\",\"timestamp\":\"2026-08-06T08:12:00Z\"}",
+        "metadata": {"sha": "b201010101010101010101010101010101010101"}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/runbooks/authentication-configuration.md#holdout-3",
+        "content": "Mounted secret files commonly end with a newline. Normalize surrounding whitespace before using a file-backed OAuth client secret and compare byte lengths, never secret values, in diagnostics.",
+        "metadata": {"knowledge_source_type": "runbook"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/holdout-fixtures@b201010101010101010101010101010101010101",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/holdout-fixtures@b201010101010101010101010101010101010101",
+      "knowledge/runbooks/authentication-configuration.md#holdout-3"
+    ],
+    "ground_truth": "The production mounted secret included a trailing newline that the new loader did not strip."
+  },
+  {
+    "id": "holdout_job_ack_before_effect",
+    "incident": {
+      "title": "Some invoice emails disappear during worker restarts",
+      "description": "Invoice jobs are marked complete, but a small number produce no email when workers restart. There are no retries for the missing deliveries.",
+      "severity": "medium",
+      "started_at": "2026-08-06T09:03:00Z",
+      "repository_full_name": "tracepilot/holdout-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/holdout-fixtures@c301010101010101010101010101010101010101",
+        "content": "{\"sha\":\"c301010101010101010101010101010101010101\",\"message\":\"Acknowledge invoice job before sending email to shorten queue lease\",\"author\":\"noor\",\"timestamp\":\"2026-08-06T08:36:00Z\"}",
+        "metadata": {"sha": "c301010101010101010101010101010101010101"}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/architecture/job-execution.md#holdout-4",
+        "content": "A durable job is completed only after its side effect succeeds. Acknowledging first converts worker termination into silent message loss.",
+        "metadata": {"knowledge_source_type": "architecture"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/holdout-fixtures@c301010101010101010101010101010101010101",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/holdout-fixtures@c301010101010101010101010101010101010101",
+      "knowledge/architecture/job-execution.md#holdout-4"
+    ],
+    "ground_truth": "The worker acknowledged jobs before email delivery, so termination caused unrecoverable job loss."
+  },
+  {
+    "id": "holdout_blue_green_stale_config",
+    "incident": {
+      "title": "Requests alternate between old and new tax behavior",
+      "description": "After a blue-green release, otherwise identical requests alternate between two tax rounding rules. Both deployment colors are receiving traffic.",
+      "severity": "high",
+      "started_at": "2026-08-06T09:37:00Z",
+      "repository_full_name": "tracepilot/holdout-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_pull_requests",
+        "source_type": "github_pull_request",
+        "source_reference": "tracepilot/holdout-fixtures#623",
+        "content": "{\"number\":623,\"title\":\"Make tax rounding configurable\",\"description\":\"Add TAX_ROUNDING_MODE to the green deployment template only; blue retains the previous default.\",\"state\":\"closed\",\"merged_at\":\"2026-08-06T09:05:00Z\"}",
+        "metadata": {"pull_number": 623}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/runbooks/deployment-rollback.md#holdout-5",
+        "content": "Blue-green colors must receive identical runtime configuration before shared traffic. Alternating deterministic behavior is evidence of configuration skew between colors.",
+        "metadata": {"knowledge_source_type": "runbook"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/holdout-fixtures#623",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/holdout-fixtures#623",
+      "knowledge/runbooks/deployment-rollback.md#holdout-5"
+    ],
+    "ground_truth": "PR 623 configured only the green color, leaving blue and green with different rounding modes."
+  },
+  {
+    "id": "holdout_replica_schema_drift",
+    "incident": {
+      "title": "Reporting reads fail while writes remain healthy",
+      "description": "The reporting endpoint began returning missing-column errors after a release. Primary writes succeed, but reports use a read replica.",
+      "severity": "high",
+      "started_at": "2026-08-06T10:11:00Z",
+      "repository_full_name": "tracepilot/holdout-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/holdout-fixtures@d401010101010101010101010101010101010101",
+        "content": "{\"sha\":\"d401010101010101010101010101010101010101\",\"message\":\"Query invoices.tax_region in reports; migration job targets primary connection only\",\"author\":\"zoe\",\"timestamp\":\"2026-08-06T09:48:00Z\"}",
+        "metadata": {"sha": "d401010101010101010101010101010101010101"}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/runbooks/database-migrations.md#holdout-6",
+        "content": "When reads and writes use different database targets, verify schema migration visibility on every target before deploying code that reads a new column.",
+        "metadata": {"knowledge_source_type": "runbook"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/holdout-fixtures@d401010101010101010101010101010101010101",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/holdout-fixtures@d401010101010101010101010101010101010101",
+      "knowledge/runbooks/database-migrations.md#holdout-6"
+    ],
+    "ground_truth": "The report queried a column whose migration was applied only to the primary target, not the reporting replica."
+  },
+  {
+    "id": "holdout_checkout_pool_starvation",
+    "incident": {
+      "title": "Checkout stalls under modest concurrency",
+      "description": "Checkout latency jumps to 30 seconds at only twenty concurrent requests. CPU is low, database query time is normal, and connection wait time dominates.",
+      "severity": "critical",
+      "started_at": "2026-08-06T10:34:00Z",
+      "repository_full_name": "tracepilot/holdout-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_pull_requests",
+        "source_type": "github_pull_request",
+        "source_reference": "tracepilot/holdout-fixtures#637",
+        "content": "{\"number\":637,\"title\":\"Audit checkout transactions\",\"description\":\"Open a transaction before calling the fraud service and keep the connection until the remote response returns.\",\"state\":\"closed\",\"merged_at\":\"2026-08-06T10:02:00Z\"}",
+        "metadata": {"pull_number": 637}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/architecture/checkout-service.md#holdout-7",
+        "content": "Checkout must not hold a database transaction or pooled connection across network calls. Remote latency then consumes the connection pool even when query latency and CPU remain low.",
+        "metadata": {"knowledge_source_type": "architecture"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/holdout-fixtures#637",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/holdout-fixtures#637",
+      "knowledge/architecture/checkout-service.md#holdout-7"
+    ],
+    "ground_truth": "PR 637 held database connections across a fraud-service network call, starving the checkout pool."
+  }
+]

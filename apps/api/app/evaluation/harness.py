@@ -13,6 +13,7 @@ from app.evaluation.models import (
     IncidentScenarioEvaluation,
 )
 from app.evaluation.tools import ControlledEvaluationToolExecutor
+from app.observability.pricing import PricingRegistry
 from app.repositories.evidence import EvidenceRepository
 from app.repositories.incidents import IncidentRepository
 from app.repositories.investigations import InvestigationRepository
@@ -30,6 +31,7 @@ from app.schemas.investigation import (
     InvestigationStatus,
     PreliminaryInvestigationResult,
 )
+from app.schemas.llm import ChatMessage, ModelTurn, ToolDefinition
 from app.services.investigation_errors import (
     EvidenceReferenceValidationError,
     InvalidModelOutputError,
@@ -39,6 +41,51 @@ from app.services.investigations import InvestigationExecutionError, Investigati
 from app.tools.github import MalformedToolArgumentsError, UnknownToolError
 
 HIGH_CONFIDENCE_THRESHOLD = 0.7
+
+
+class EvaluationUsageProvider:
+    def __init__(self, provider: LLMProvider, pricing: PricingRegistry) -> None:
+        self._provider = provider
+        self._pricing = pricing
+        self.turns: list[ModelTurn] = []
+
+    @property
+    def provider_name(self) -> str:
+        return getattr(self._provider, "provider_name", "unknown")
+
+    @property
+    def model_name(self) -> str:
+        return self._provider.model_name
+
+    async def complete(
+        self,
+        messages: list[ChatMessage],
+        tools: list[ToolDefinition],
+    ) -> ModelTurn:
+        turn = await self._provider.complete(messages, tools)
+        self.turns.append(turn)
+        return turn
+
+    def usage(self) -> tuple[int | None, int | None, int | None, float | None]:
+        with_usage = [turn for turn in self.turns if turn.total_tokens is not None]
+        if not with_usage:
+            return None, None, None, None
+        input_tokens = sum(turn.input_tokens or 0 for turn in with_usage)
+        output_tokens = sum(turn.output_tokens or 0 for turn in with_usage)
+        total_tokens = sum(turn.total_tokens or 0 for turn in with_usage)
+        estimates = [
+            estimate
+            for turn in with_usage
+            if (
+                estimate := self._pricing.estimate(
+                    turn.model or self.model_name,
+                    turn.input_tokens,
+                    turn.output_tokens,
+                )
+            )
+            is not None
+        ]
+        return input_tokens, output_tokens, total_tokens, sum(estimates) if estimates else None
 
 
 class EvaluationIncidentRepository:
@@ -232,10 +279,12 @@ class EvaluationReviewRepository:
 async def evaluate_incidents(
     scenarios: list[IncidentEvaluationScenario],
     llm: LLMProvider,
+    pricing: PricingRegistry | None = None,
 ) -> IncidentEvaluationReport:
     if not scenarios:
         raise ValueError("Incident evaluation requires at least one scenario")
-    results = [await _evaluate_scenario(scenario, llm) for scenario in scenarios]
+    registry = pricing or PricingRegistry.from_json(None, None)
+    results = [await _evaluate_scenario(scenario, llm, registry) for scenario in scenarios]
     return IncidentEvaluationReport(
         prompt_version=PROMPT_VERSION,
         model_name=llm.model_name,
@@ -248,6 +297,7 @@ async def evaluate_incidents(
 async def _evaluate_scenario(
     scenario: IncidentEvaluationScenario,
     llm: LLMProvider,
+    pricing: PricingRegistry,
 ) -> IncidentScenarioEvaluation:
     now = datetime.now(UTC)
     incident = IncidentResponse(
@@ -269,6 +319,7 @@ async def _evaluate_scenario(
     jobs: InvestigationJobRepository = EvaluationJobRepository(investigation_store)
     reviews: InvestigationReviewRepository = EvaluationReviewRepository()
     tools = ControlledEvaluationToolExecutor(scenario, evidence)
+    measured_llm = EvaluationUsageProvider(llm, pricing)
     service = InvestigationService(
         incidents,
         investigations,
@@ -276,7 +327,7 @@ async def _evaluate_scenario(
         jobs,
         reviews,
         tools,
-        llm,
+        measured_llm,
     )
 
     started = time.perf_counter()
@@ -311,6 +362,8 @@ async def _evaluate_scenario(
         correct,
         recall,
     )
+    input_tokens, output_tokens, total_tokens, estimated_cost = measured_llm.usage()
+    serving_turns = [turn for turn in measured_llm.turns if turn.provider or turn.model]
     return IncidentScenarioEvaluation(
         scenario_id=scenario.id,
         completed=completed is not None,
@@ -325,6 +378,20 @@ async def _evaluate_scenario(
         tool_calls=len(tools.calls),
         called_tools=tools.calls,
         latency_ms=latency_ms,
+        serving_provider=(
+            serving_turns[-1].provider or measured_llm.provider_name if serving_turns else None
+        ),
+        serving_model=(
+            serving_turns[-1].model or measured_llm.model_name if serving_turns else None
+        ),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
+        estimated_cost_usd=estimated_cost,
+        fallback_used=any(turn.fallback_used for turn in measured_llm.turns),
+        fallback_reasons=[
+            turn.fallback_reason for turn in measured_llm.turns if turn.fallback_reason is not None
+        ],
         failure_class=failure_class,
         failure_reason=failure_reason,
     )
@@ -393,6 +460,10 @@ def _aggregate(results: list[IncidentScenarioEvaluation]) -> IncidentEvaluationM
     confidences = [item.confidence for item in completed if item.confidence is not None]
     correct_confidences = [item.confidence for item in correct if item.confidence is not None]
     incorrect_confidences = [item.confidence for item in incorrect if item.confidence is not None]
+    input_tokens = [item.input_tokens for item in results if item.input_tokens is not None]
+    output_tokens = [item.output_tokens for item in results if item.output_tokens is not None]
+    total_tokens = [item.total_tokens for item in results if item.total_tokens is not None]
+    costs = [item.estimated_cost_usd for item in results if item.estimated_cost_usd is not None]
     return IncidentEvaluationMetrics(
         scenario_count=count,
         completed_count=len(completed),
@@ -415,4 +486,9 @@ def _aggregate(results: list[IncidentScenarioEvaluation]) -> IncidentEvaluationM
             and not item.culprit_correct
             for item in results
         ),
+        average_input_tokens=fmean(input_tokens) if input_tokens else None,
+        average_output_tokens=fmean(output_tokens) if output_tokens else None,
+        average_total_tokens=fmean(total_tokens) if total_tokens else None,
+        average_estimated_cost_usd=fmean(costs) if costs else None,
+        fallback_scenario_count=sum(item.fallback_used for item in results),
     )

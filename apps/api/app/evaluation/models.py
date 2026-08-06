@@ -58,6 +58,14 @@ class IncidentScenarioEvaluation(BaseModel):
     tool_calls: int = Field(ge=0)
     called_tools: list[str]
     latency_ms: float = Field(ge=0.0)
+    serving_provider: str | None = None
+    serving_model: str | None = None
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    total_tokens: int | None = Field(default=None, ge=0)
+    estimated_cost_usd: float | None = Field(default=None, ge=0)
+    fallback_used: bool = False
+    fallback_reasons: list[str] = Field(default_factory=list)
     failure_class: EvaluationFailureClass | None
     failure_reason: str | None
 
@@ -77,6 +85,11 @@ class IncidentEvaluationMetrics(BaseModel):
     average_confidence_correct: float | None
     average_confidence_incorrect: float | None
     high_confidence_incorrect_count: int = Field(ge=0)
+    average_input_tokens: float | None = None
+    average_output_tokens: float | None = None
+    average_total_tokens: float | None = None
+    average_estimated_cost_usd: float | None = None
+    fallback_scenario_count: int = Field(default=0, ge=0)
 
 
 class IncidentEvaluationReport(BaseModel):
