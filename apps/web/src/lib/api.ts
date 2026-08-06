@@ -30,6 +30,27 @@ interface IncidentListResponse {
 }
 
 export type InvestigationStatus = "pending" | "in_progress" | "completed" | "failed";
+export type InvestigationStage =
+  | "queued"
+  | "collecting_evidence"
+  | "retrieving_knowledge"
+  | "reasoning"
+  | "finalizing"
+  | "retry_scheduled"
+  | "completed"
+  | "failed";
+
+export type InvestigationReviewDecision = "accepted" | "rejected";
+
+export interface InvestigationReview {
+  id: string;
+  investigation_id: string;
+  decision: InvestigationReviewDecision;
+  note: string | null;
+  reviewed_at: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface Evidence {
   id: string;
@@ -52,6 +73,7 @@ export interface Investigation {
   id: string;
   incident_id: string;
   status: InvestigationStatus;
+  stage: InvestigationStage;
   summary: string | null;
   confidence: number | null;
   suspected_change: string | null;
@@ -61,10 +83,21 @@ export interface Investigation {
   error_message: string | null;
   prompt_version: string | null;
   model_name: string | null;
+  tool_call_count: number;
+  duration_ms: number | null;
+  review: InvestigationReview | null;
   started_at: string;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface InvestigationAccepted {
+  investigation_id: string;
+  status: InvestigationStatus;
+  stage: InvestigationStage;
+  created_at: string;
+  already_active: boolean;
 }
 
 interface EvidenceListResponse {
@@ -138,12 +171,12 @@ export async function listInvestigations(incidentId: string): Promise<Investigat
   return result.items;
 }
 
-export async function runInvestigation(incidentId: string): Promise<Investigation> {
+export async function runInvestigation(incidentId: string): Promise<InvestigationAccepted> {
   const response = await fetch(`${apiUrl}/api/v1/incidents/${incidentId}/investigations`, {
     method: "POST",
     headers: { Accept: "application/json" },
   });
-  return parseResponse<Investigation>(response);
+  return parseResponse<InvestigationAccepted>(response);
 }
 
 export async function getInvestigation(investigationId: string): Promise<Investigation> {
@@ -151,4 +184,17 @@ export async function getInvestigation(investigationId: string): Promise<Investi
     cache: "no-store",
   });
   return parseResponse<Investigation>(response);
+}
+
+export async function reviewInvestigation(
+  investigationId: string,
+  decision: InvestigationReviewDecision,
+  note?: string,
+): Promise<InvestigationReview> {
+  const response = await fetch(`${apiUrl}/api/v1/investigations/${investigationId}/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ decision, note: note?.trim() || null }),
+  });
+  return parseResponse<InvestigationReview>(response);
 }

@@ -6,11 +6,13 @@ import {
   createIncident,
   Evidence,
   getIncident,
+  getInvestigation,
   Incident,
   Investigation,
   listEvidence,
   listIncidents,
   listInvestigations,
+  reviewInvestigation,
   runInvestigation,
   Severity,
   severities,
@@ -67,9 +69,15 @@ export default function Home() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [running, setRunning] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewNote, setReviewNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const latestInvestigation = investigations[0] ?? null;
+  const investigationActive =
+    latestInvestigation?.status === "pending" || latestInvestigation?.status === "in_progress";
+  const activeInvestigationId =
+    investigationActive && latestInvestigation ? latestInvestigation.id : null;
 
   useEffect(() => {
     let active = true;
@@ -87,6 +95,38 @@ export default function Home() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const incidentId = selected?.id;
+    if (!incidentId || !activeInvestigationId) return;
+    const investigationId: string = activeInvestigationId;
+    const selectedIncidentId: string = incidentId;
+
+    let active = true;
+    async function poll() {
+      try {
+        const updated = await getInvestigation(investigationId);
+        if (!active) return;
+        setInvestigations((current) => [
+          updated,
+          ...current.filter((item) => item.id !== updated.id),
+        ]);
+        if (updated.status === "completed" || updated.status === "failed") {
+          const collectedEvidence = await listEvidence(selectedIncidentId);
+          if (active) setEvidence(collectedEvidence);
+        }
+      } catch (reason: unknown) {
+        if (active) setError(messageFrom(reason, "Unable to refresh investigation progress"));
+      }
+    }
+
+    void poll();
+    const timer = window.setInterval(() => void poll(), 1_500);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [activeInvestigationId, selected?.id]);
 
   async function loadIncidentContext(incidentId: string) {
     const [incident, collectedEvidence, existingInvestigations] = await Promise.all([
@@ -149,8 +189,12 @@ export default function Home() {
     setRunning(true);
     setError(null);
     try {
-      await runInvestigation(selected.id);
-      await loadIncidentContext(selected.id);
+      const accepted = await runInvestigation(selected.id);
+      const queued = await getInvestigation(accepted.investigation_id);
+      setInvestigations((current) => [
+        queued,
+        ...current.filter((item) => item.id !== queued.id),
+      ]);
     } catch (reason: unknown) {
       setError(messageFrom(reason, "Investigation failed"));
       await loadIncidentContext(selected.id).catch(() => undefined);
@@ -159,10 +203,33 @@ export default function Home() {
     }
   }
 
+  async function handleReview(decision: "accepted" | "rejected") {
+    if (!latestInvestigation || latestInvestigation.status !== "completed") return;
+    setReviewing(true);
+    setError(null);
+    try {
+      const review = await reviewInvestigation(
+        latestInvestigation.id,
+        decision,
+        reviewNote || undefined,
+      );
+      setInvestigations((current) =>
+        current.map((item) =>
+          item.id === latestInvestigation.id ? { ...item, review } : item,
+        ),
+      );
+      setReviewNote("");
+    } catch (reason: unknown) {
+      setError(messageFrom(reason, "Unable to save human review"));
+    } finally {
+      setReviewing(false);
+    }
+  }
+
   return (
     <main>
       <header className="hero">
-        <div className="eyebrow">Day 3 · Retrieval-grounded workflow</div>
+        <div className="eyebrow">Day 4 · Durable investigation workflow</div>
         <h1>TracePilot</h1>
         <p>Evidence-Grounded Incident Investigation</p>
       </header>
@@ -210,7 +277,7 @@ export default function Home() {
                 <div><dt>Started</dt><dd>{formatDate(selected.started_at)}</dd></div>
                 <div><dt>Incident ID</dt><dd className="mono">{selected.id}</dd></div>
               </dl>
-              {selected.repository_full_name ? <button className="run-button" type="button" disabled={running || detailsLoading} onClick={handleRunInvestigation}>{running ? "Investigating…" : "Run investigation"}</button> : <p className="notice">Add repository context to run an evidence-grounded investigation.</p>}
+              {selected.repository_full_name ? <button className="run-button" type="button" disabled={running || detailsLoading || investigationActive} onClick={handleRunInvestigation}>{running ? "Queuing…" : investigationActive ? "Investigation in progress" : "Run investigation"}</button> : <p className="notice">Add repository context to run an evidence-grounded investigation.</p>}
             </article>
           )}
         </section>
@@ -239,15 +306,25 @@ export default function Home() {
             <p className="boundary-copy">A validated conclusion, not a confirmed root cause.</p>
             {!latestInvestigation ? <p className="empty">No investigation run yet.</p> : (
               <div className="hypothesis">
-                <div className="hypothesis-meta"><span className={`badge investigation-${latestInvestigation.status}`}>{latestInvestigation.status}</span>{latestInvestigation.confidence !== null && <strong>{Math.round(latestInvestigation.confidence * 100)}% confidence</strong>}</div>
+                <div className="hypothesis-meta"><span className={`badge investigation-${latestInvestigation.status}`}>{latestInvestigation.stage.replaceAll("_", " ")}</span>{latestInvestigation.confidence !== null && <strong>{Math.round(latestInvestigation.confidence * 100)}% confidence</strong>}</div>
                 {latestInvestigation.status === "failed" ? <p className="failure-copy">{latestInvestigation.error_message}</p> : <>
+                  {latestInvestigation.status !== "completed" ? <div className="progress-copy"><span className="progress-dot" aria-hidden="true" /><div><strong>Background worker active</strong><p>This page is polling durable progress. You can safely navigate away.</p></div></div> : <>
                   <h3>Summary</h3><p>{latestInvestigation.summary ?? "Awaiting a conclusion."}</p>
                   <h3>Suspected change</h3><p>{latestInvestigation.suspected_change ?? "No specific change identified."}</p>
                   <h3>Supporting evidence</h3>{latestInvestigation.supporting_evidence_ids.length === 0 ? <p>None cited.</p> : <ul>{latestInvestigation.supporting_evidence_ids.map((id) => <li key={id}><a href={`#evidence-${id}`} className="mono">{id}</a></li>)}</ul>}
                   <h3>Missing information</h3><ul>{latestInvestigation.missing_information.map((item) => <li key={item}>{item}</li>)}</ul>
                   <h3>Recommended next steps</h3><ol>{latestInvestigation.recommended_next_steps.map((item) => <li key={item}>{item}</li>)}</ol>
+                  <section className="human-review">
+                    <h3>HUMAN REVIEW</h3>
+                    <p className="boundary-copy">A separate human decision; it never edits the AI conclusion.</p>
+                    {latestInvestigation.review ? <div className={`review-decision review-${latestInvestigation.review.decision}`}><strong>{latestInvestigation.review.decision}</strong>{latestInvestigation.review.note && <p>{latestInvestigation.review.note}</p>}<small>{formatDate(latestInvestigation.review.reviewed_at)}</small></div> : <>
+                      <label>Review note <span className="optional">optional</span><textarea maxLength={2000} rows={3} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="Why do you accept or reject this preliminary conclusion?" /></label>
+                      <div className="review-actions"><button type="button" disabled={reviewing} onClick={() => handleReview("accepted")}>Accept</button><button className="reject-button" type="button" disabled={reviewing} onClick={() => handleReview("rejected")}>Reject</button></div>
+                    </>}
+                  </section>
+                  </>}
                 </>}
-                <small className="model-note">{latestInvestigation.prompt_version} · {latestInvestigation.model_name}</small>
+                <small className="model-note">{latestInvestigation.prompt_version} · {latestInvestigation.model_name}{latestInvestigation.duration_ms !== null ? ` · ${(latestInvestigation.duration_ms / 1000).toFixed(1)}s · ${latestInvestigation.tool_call_count} tools` : ""}</small>
               </div>
             )}
           </article>
