@@ -1,0 +1,91 @@
+{
+  "verified_at": "2026-08-06T12:09:31.312220+00:00",
+  "incident_id": "26aeff02-d571-4562-8133-0995933db33e",
+  "investigation_id": "ecc6f4e5-8273-4169-a5c4-a394d16abc00",
+  "repository": "muhammadAzeem0x000/TracePilot",
+  "status": "completed",
+  "tool_call_count": 5,
+  "evidence_count": 18,
+  "knowledge_evidence_ids": [
+    "2ae7fc65-e334-42e7-9e57-04c8d627a7ef",
+    "34e9498d-6139-4b7c-a976-9ce74137af61",
+    "42931db0-2f11-4fb5-99fc-12b3e4a74151",
+    "2eec24e4-1351-4ff7-992c-87913f3a7412",
+    "ce4243b0-8fda-4588-8ba6-edf4ae673992"
+  ],
+  "cited_evidence_ids": [
+    "2ae7fc65-e334-42e7-9e57-04c8d627a7ef",
+    "34e9498d-6139-4b7c-a976-9ce74137af61",
+    "42931db0-2f11-4fb5-99fc-12b3e4a74151"
+  ],
+  "all_citations_valid": true,
+  "operation_count": 12,
+  "operation_types": [
+    "embedding",
+    "github_tool",
+    "investigation",
+    "knowledge_retrieval",
+    "llm_call",
+    "queue_wait",
+    "rerank"
+  ],
+  "latency": [
+    {
+      "operation_type": "queue_wait",
+      "call_count": 1,
+      "total_duration_ms": 0,
+      "average_duration_ms": 0.0
+    },
+    {
+      "operation_type": "investigation",
+      "call_count": 1,
+      "total_duration_ms": 41748,
+      "average_duration_ms": 41748.0
+    },
+    {
+      "operation_type": "llm_call",
+      "call_count": 3,
+      "total_duration_ms": 20935,
+      "average_duration_ms": 6978.333333333333
+    },
+    {
+      "operation_type": "github_tool",
+      "call_count": 4,
+      "total_duration_ms": 7414,
+      "average_duration_ms": 1853.5
+    },
+    {
+      "operation_type": "embedding",
+      "call_count": 1,
+      "total_duration_ms": 711,
+      "average_duration_ms": 711.0
+    },
+    {
+      "operation_type": "knowledge_retrieval",
+      "call_count": 1,
+      "total_duration_ms": 6263,
+      "average_duration_ms": 6263.0
+    },
+    {
+      "operation_type": "rerank",
+      "call_count": 1,
+      "total_duration_ms": 2381,
+      "average_duration_ms": 2381.0
+    }
+  ],
+  "input_tokens": 18759,
+  "output_tokens": 2117,
+  "total_tokens": 20876,
+  "estimated_cost_usd": null,
+  "cost_status": "unknown_unconfigured",
+  "fallback_used": false,
+  "serving_providers": [
+    "deepseek",
+    "gemini"
+  ],
+  "serving_models": [
+    "deepseek-chat",
+    "deepseek-v4-flash",
+    "gemini-embedding-001"
+  ]
+}

@@ -37,7 +37,12 @@ class ControlledFailureService:
         self._investigations = investigations
         self._error = error
 
-    async def execute(self, _investigation_id: UUID) -> NoReturn:
+    async def execute(
+        self,
+        _investigation_id: UUID,
+        _job_id: UUID | None = None,
+        _queued_at: datetime | None = None,
+    ) -> NoReturn:
         raise self._error
 
     async def mark_retry_scheduled(self, investigation_id: UUID) -> object:

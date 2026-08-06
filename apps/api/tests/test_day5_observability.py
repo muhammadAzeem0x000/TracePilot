@@ -24,6 +24,7 @@ from app.repositories.incidents import IncidentRepository
 from app.repositories.operations import aggregate_investigation_metrics
 from app.schemas.llm import ChatMessage, ModelTurn, ToolDefinition
 from app.schemas.operations import AIOperationCreate, AIOperationResponse
+from app.services.investigations import clamp_queue_started_at
 from tests.conftest import FakeIncidentRepository
 
 
@@ -239,3 +240,10 @@ def test_ai_operations_migration_is_service_role_only() -> None:
     assert "grant select, insert on table public.ai_operations to service_role" in migration
     assert "raw_prompt" not in migration
     assert "evidence_body" not in migration
+
+
+def test_queue_span_clamps_database_clock_skew() -> None:
+    execution_started = datetime(2026, 8, 6, 12, 0, tzinfo=UTC)
+    database_created = datetime(2026, 8, 6, 12, 0, 2, tzinfo=UTC)
+
+    assert clamp_queue_started_at(database_created, execution_started) == execution_started

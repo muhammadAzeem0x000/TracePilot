@@ -72,6 +72,11 @@ class InvestigationExecutionError(Exception):
         self.investigation_id = investigation_id
 
 
+def clamp_queue_started_at(queued_at: datetime, execution_started_at: datetime) -> datetime:
+    """Keep a database timestamp from violating span order under small clock skew."""
+    return min(queued_at, execution_started_at)
+
+
 @dataclass(frozen=True)
 class InvestigationLoopOutcome:
     result: PreliminaryInvestigationResult
@@ -168,11 +173,12 @@ class InvestigationService:
         started_at = datetime.now(UTC)
         trace_token = begin_trace(investigation.id, job_id) if self._operations else None
         if self._operations and queued_at is not None:
-            queue_seconds = max(0.0, (started_at - queued_at).total_seconds())
+            queue_started_at = clamp_queue_started_at(queued_at, started_at)
+            queue_seconds = max(0.0, (started_at - queue_started_at).total_seconds())
             await record_operation(
                 self._operations,
                 operation_type=AIOperationType.QUEUE_WAIT,
-                started_at=queued_at,
+                started_at=queue_started_at,
                 started_perf=time.perf_counter() - queue_seconds,
                 status=AIOperationStatus.SUCCEEDED,
             )
