@@ -1,17 +1,20 @@
-# TracePilot Architecture - Day 3
+# TracePilot Architecture - Day 4
 
 TracePilot remains one Next.js app, one FastAPI service, and one Supabase PostgreSQL database.
-Day 3 extends the existing deterministic investigation loop with repository-scoped knowledge
-retrieval; it does not add another service or orchestration framework.
+Day 4 places the existing deterministic investigation loop behind a durable PostgreSQL queue and
+adds diagnosis evaluation; it does not add another service or orchestration framework.
 
 ## Responsibilities
 
 ### Next.js (`apps/web`)
 
-`src/lib/api.ts` is the browser contract boundary. The incident detail view runs investigations
-and renders two distinct regions: `COLLECTED EVIDENCE` and `AI PRELIMINARY HYPOTHESIS`. Knowledge
+`src/lib/api.ts` is the browser contract boundary. The incident detail view enqueues investigations
+and polls every 1.5 seconds while status is `pending` or `in_progress`. It shows a disabled active
+button and stage-specific progress, then refreshes investigation and Evidence state at termination.
+It renders two distinct regions: `COLLECTED EVIDENCE` and `AI PRELIMINARY HYPOTHESIS`. Knowledge
 cards label their original type (`RUNBOOK`, `ARCHITECTURE`, or `PAST INCIDENT`) and expose ranking
-metadata in a details element. The browser has no database or provider secret.
+metadata in a details element. `HUMAN REVIEW` is a third, separate accept/reject record. The browser
+has no database or provider secret.
 
 ### FastAPI (`apps/api`)
 
@@ -24,6 +27,10 @@ metadata in a details element. The browser has no database or provider secret.
 - `app/retrieval/context.py` deduplicates and enforces the final approximate-token budget.
 - `app/tools/knowledge.py` fixes scope from the Incident and persists chunks as Evidence.
 - `app/services/investigations.py` retains the six-call deterministic tool loop and citation checks.
+- `app/repositories/jobs.py` owns atomic enqueue/claim RPCs and durable job transitions.
+- `app/services/worker.py` owns lease processing, retry classification, exponential backoff, and
+  permanent failure behavior.
+- `app/evaluation/` runs real orchestration and validation against fixed Evidence fixtures.
 - `app/api/routes.py` exposes the product APIs and one read-only developer search endpoint.
 
 ### Supabase PostgreSQL
@@ -38,6 +45,34 @@ metadata in a details element. The browser has no database or provider secret.
 Both server-only SQL functions require `filter_repository`. RLS is enabled and public roles have no
 table or function access. The HNSW index demonstrates the scalable access path; this ten-document
 corpus is too small to claim a speed benefit over an exact scan.
+
+`investigation_jobs` stores queue state, attempts, eligibility time, locks, leases, terminal errors,
+and completion time. `enqueue_investigation_job` locks the Incident and atomically returns an existing
+active investigation or inserts one Investigation plus one job. `claim_investigation_job` uses
+`FOR UPDATE SKIP LOCKED`, increments attempts, assigns an expiring lease, and also reclaims stale
+running jobs. `investigation_reviews` stores one human decision per completed investigation. All
+three queue RPCs are security-invoker functions executable only by `service_role`.
+
+## Durable execution flow
+
+```text
+POST incident/{id}/investigations
+  -> validate Incident repository scope
+  -> atomic enqueue (duplicate active run returns same ID)
+  -> HTTP 202 with queued Investigation
+
+worker
+  -> claim one eligible job with row lock + SKIP LOCKED
+  -> run unchanged bounded evidence/model loop
+  -> completed: terminal Investigation + job
+  -> transient failure: retry_scheduled at database_now + base * 2^(attempt-1)
+  -> permanent/exhausted failure: terminal Investigation + job
+  -> process loss: running lease expires and becomes claimable
+```
+
+Terminal and retry timestamps use PostgreSQL `clock_timestamp()`. Live verification found the
+worker host clock about three seconds behind the database; client-generated completion time could
+otherwise precede database-generated start time and violate the relational constraint.
 
 ## Ingestion flow
 
@@ -101,9 +136,27 @@ PL/pgSQL function. Live ingestion exposed the resulting ambiguous-column error. 
 migration aliases `knowledge_chunks` and qualifies `knowledge_chunk.source_id`; migration history was
 not rewritten.
 
+## Day 4 live verification snapshot (2026-08-06)
+
+- Two concurrent claim requests returned exactly one job; an expired lease was reclaimed at attempt
+  two. Transient failure scheduled a database-clock retry and exhausted at attempt two; permanent
+  failure stopped at attempt one.
+- A real HTTP request returned `202` in 1,322.58 ms; the worker completed in 46,031 ms with four
+  tools, 17 Evidence rows, and valid citations. Queued, collecting, retrieving, reasoning,
+  finalizing, and completed stages were observed.
+- Live Day-2 GitHub verification completed with 13 Evidence rows and four valid citations. Live
+  Day-3 verification used 768-dimensional Gemini embeddings, stored five knowledge Evidence rows,
+  and cited three.
+- Browser polling displayed an active background-worker stage and then completion. RUNBOOK,
+  ARCHITECTURE, and PAST INCIDENT remained visually separate from the model conclusion; console
+  warnings/errors were empty.
+- Supabase advisors reported only informational no-policy notices (intentional server-only RLS) and
+  unused indexes expected for this small development dataset.
+
 ## Async boundaries
 
-Supabase, GitHub, Gemini, and chat-model operations are async network I/O. Semantic and lexical
+Supabase, GitHub, Gemini, and chat-model operations are async network I/O. The HTTP request no longer
+owns the model call; the lifespan-managed worker does. Semantic and lexical
 database calls run concurrently in hybrid modes. Hashing, deterministic chunking, RRF, Pydantic
 validation, context selection, and evidence/citation set comparisons remain synchronous because
 making CPU-local transformations async would add complexity without concurrency benefit.

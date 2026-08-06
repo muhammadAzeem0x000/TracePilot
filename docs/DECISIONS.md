@@ -59,11 +59,12 @@ Shape validation cannot prove truth, so database citation validation remains sep
 
 ## ADR-008: Bounded deterministic loop instead of LangGraph or multiple agents
 
-**Status:** Accepted on Day 2
+**Status:** Accepted on Day 2, execution extended on Day 4
 
 One loop is enough for model, validated tool, persisted evidence, and validated conclusion. Six tool
-calls bound latency/cost and make failure tests straightforward. It is synchronous and cannot resume
-after process loss; durable execution is deferred until the workflow proves it needs it.
+calls bound latency/cost and make failure tests straightforward. Day 4 retained this explicit loop
+inside a durable leased job; process loss now causes lease-based replay without introducing a graph
+framework or additional agent authority.
 
 ## ADR-009: Store evidence and hypotheses separately
 
@@ -148,3 +149,67 @@ from reasoning quality and prevents fluent answers from masking retrieval failur
 The first live run found semantic and RRF metrics identical. Therefore TracePilot does not claim
 hybrid improved the checked-in benchmark. Exact-identifier lexical retrieval was still verified
 directly, and retaining both channels remains justified for identifier-heavy engineering queries.
+
+## ADR-018: PostgreSQL is the durable investigation queue
+
+**Status:** Accepted on Day 4
+
+The request creates an Investigation and job transactionally, returns `202`, and a worker claims the
+job later. PostgreSQL already owns the related state and provides transactions, row locks, and crash
+recovery, avoiding another Day-4 service. FastAPI `BackgroundTasks` is process-local and would lose
+work on restart; an external queue may become appropriate when throughput or isolation demands it.
+
+## ADR-019: Leases, `SKIP LOCKED`, and bounded error-specific retry
+
+**Status:** Accepted on Day 4
+
+Claims use `FOR UPDATE SKIP LOCKED`, an expiring lease, and an incremented attempt count so workers do
+not double-claim and process loss is recoverable. Rate limits, timeouts, provider unavailability, and
+storage failures retry with bounded exponential backoff. Authentication, permission/404, malformed
+tools, invalid output/citations, dimension mismatch, and tool-limit failures stop immediately.
+At-least-once execution means external side effects would need idempotency; today all tools are reads.
+
+## ADR-020: One active investigation per Incident
+
+**Status:** Accepted on Day 4
+
+A partial unique index plus Incident-row locking makes duplicate enqueue safe under concurrency. A
+repeat request returns the active Investigation ID rather than a conflict or duplicate job. Completed
+or failed history remains immutable and permits a new run. This is a V1 product rule, not a claim that
+parallel investigations are never useful.
+
+## ADR-021: Fixed Evidence fixtures evaluate diagnosis, not retrieval drift
+
+**Status:** Accepted on Day 4
+
+The ten-scenario benchmark uses the real configured LLM, production orchestration, tool validation,
+Evidence persistence, Pydantic output, and citation checks, but fixed tool results. Expected culprit
+is the exact retrieved `source_reference`, making accuracy deterministic without an LLM judge. This
+isolates reasoning/tool choice from changing GitHub state; Day 3's retrieval benchmark remains a
+separate layer and is not replaced.
+
+## ADR-022: Confidence is reported, not calibrated
+
+**Status:** Accepted on Day 4
+
+TracePilot records bounded model confidence and compares correct versus incorrect cases, but never
+presents it as probability. The live benchmark had no incorrect final cases, so incorrect-confidence
+is `n/a`; ten fictional scenarios cannot establish calibration. Invalid evidence references still
+fail independently of confidence.
+
+## ADR-023: Human review is a separate immutable judgment
+
+**Status:** Accepted on Day 4
+
+An accept/reject decision and note live in `investigation_reviews`; they do not overwrite the model
+summary, confidence, culprit, or citations. This preserves provenance and makes disagreement visible.
+The V1 has one upserted review and no reviewer identity because authentication is deferred.
+
+## ADR-024: Database clocks own durable timestamps
+
+**Status:** Accepted on Day 4 after live verification
+
+Live Supabase testing found enough host/database clock skew for a client completion timestamp to
+precede the database start timestamp. Triggers now stamp terminal transitions and the retry RPC
+computes eligibility with PostgreSQL's clock. Durable ordering no longer assumes synchronized worker
+clocks; application timers remain suitable only for local latency measurement.

@@ -1,4 +1,4 @@
-# TracePilot Engineering Notes - Day 3
+# TracePilot Engineering Notes - Day 4
 
 These notes refer to concrete code and failures in this repository.
 
@@ -77,7 +77,8 @@ graph; a separate query service would improve degraded-mode reads in a larger sy
 
 Supabase, GitHub, Gemini, and chat calls are async. Semantic and lexical searches run concurrently in
 hybrid mode. Hashing, chunking, RRF, parsing, context selection, and citation set comparison remain
-synchronous. The investigation request still waits for completion; background execution is deferred.
+synchronous. On Day 4 the investigation request transfers ownership to a durable job and returns
+`202`; async provider I/O now runs in the worker rather than holding the HTTP request open.
 
 ## Failure-driven fixes during implementation
 
@@ -119,3 +120,58 @@ architecture source in all modes, leaving the sole reranked Hit@1 failure. Per-q
 The latency result is the clearest trade-off: reranking improved top-rank relevance but added roughly
 2.9 seconds compared with RRF. Hit@3 and Hit@5 were already perfect, so the extra call improved only
 ordering, not whether relevant material reached the five-chunk context.
+
+## A `202` response needs durable ownership transfer
+
+The route in `app/api/routes.py` now validates the Incident and calls an atomic enqueue RPC; it never
+starts an untracked coroutine. `app/services/worker.py` owns execution after the response. This is the
+meaningful boundary: the request is fast relative to the 46-second live investigation, while the job
+survives request cancellation and process restart through its database state.
+
+## Row locking solves claim contention; leases solve worker death
+
+`claim_investigation_job` combines `FOR UPDATE SKIP LOCKED` with `lease_expires_at`. A row lock alone
+prevents simultaneous claims only during the transaction; it cannot show that a worker died after
+commit. The live check issued two concurrent claims and got one job, then expired that lease and
+reclaimed the same job at attempt two.
+
+## Retry policy is domain policy, not a blanket exception handler
+
+`investigation_errors.py` separates transient provider/storage failures from permanent authority,
+validation, citation, dimension, and tool-loop failures. The worker uses `base * 2^(attempt-1)` and
+the job's persisted maximum. Live verification scheduled a transient retry, exhausted it at attempt
+two, and stopped a permanent error at attempt one. An unexpected programming error is terminal and
+logged rather than replayed indefinitely.
+
+## Durable timestamps must share a clock
+
+The first live queue run exposed a PostgreSQL integrity error: the worker clock was about three
+seconds behind Supabase, so `completed_at` could be earlier than database-generated `started_at`.
+`20260806093000_day4_server_timestamps.sql` moved terminal stamps and retry eligibility to
+`clock_timestamp()`. The Supabase client now also preserves bounded HTTP error detail internally,
+which made the violated constraint diagnosable without exposing a secret to API clients.
+
+## A diagnosis benchmark is not a retrieval benchmark
+
+`evaluation/incident_benchmark.json` fixes ten incident inputs, available tool Evidence, expected
+culprit references, and relevant citation sets. `app/evaluation/harness.py` still uses the production
+investigation loop and real DeepSeek output. Culprit accuracy and citation metrics therefore measure
+tool choice plus reasoning, while Day 3 Hit@k/MRR measures only retrieval ordering.
+
+The first live diagnosis run completed 2/10: eight cases kept requesting tools until the six-call
+guard rejected them. The benchmark was not changed and the limit was not raised. Adding explicit
+budget/stop guidance to `investigation_v2` produced 10/10 completion and accuracy, precision, and
+recall in the committed run, with 4.2 tool calls and 7.90 seconds average latency. This is a useful
+prompt regression result, not evidence of broad generalization.
+
+## Confidence analysis needs incorrect cases
+
+Average confidence was 0.615 and every final diagnosis was correct, leaving confidence-on-incorrect
+undefined. Reporting `n/a` is more honest than treating zero or omitting the field. Confidence is a
+model claim; the deterministic culprit and citation checks are the correctness measurements.
+
+## Human review should not edit history
+
+The browser can accept or reject a completed Investigation, but `investigation_reviews` is separate
+from model output. Live API verification accepted and then rejected the same conclusion and confirmed
+the summary, confidence, suspected change, and citation IDs were byte-for-byte unchanged.

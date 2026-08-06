@@ -36,8 +36,8 @@ def create_app() -> FastAPI:
     settings = get_settings()
     application = FastAPI(
         title="TracePilot API",
-        version="0.3.0",
-        description="Evidence-grounded incident investigation with repository knowledge retrieval.",
+        version="0.4.0",
+        description="Durable evidence-grounded incident investigation and evaluation.",
         lifespan=lifespan,
     )
     application.add_middleware(

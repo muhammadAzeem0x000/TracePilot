@@ -4,14 +4,18 @@ TracePilot is a five-day applied AI engineering project exploring how an inciden
 can use model-generated hypotheses without confusing them with inspectable evidence. It is
 learning/project software, not a production incident-response platform.
 
-Day 3 adds repository-scoped retrieval over original runbooks, architecture notes, and past
-incident reports. GitHub results and retrieved knowledge chunks are persisted as Evidence before
-the LLM can cite them.
+Day 4 moves investigations onto a durable PostgreSQL queue and adds a fixed end-to-end diagnosis
+benchmark. GitHub results and retrieved knowledge chunks remain persisted as Evidence before the
+LLM can cite them.
 
 ## Current capabilities
 
 - Create, list, and retrieve validated incidents with optional `owner/repository` context.
-- Run a synchronous preliminary investigation using allowlisted GitHub and knowledge tools.
+- Enqueue a preliminary investigation with HTTP `202`; a leased worker runs allowlisted GitHub and
+  knowledge tools while the browser polls visible progress.
+- Recover expired leases, retry transient provider/storage failures with bounded exponential
+  backoff, and stop permanent failures without retrying.
+- Prevent duplicate active investigations atomically while allowing a new run after completion.
 - Ingest Markdown/text knowledge idempotently with deterministic chunking and Gemini embeddings.
 - Store 768-dimensional vectors in Supabase PostgreSQL with pgvector cosine search.
 - Search by semantic similarity, PostgreSQL full-text ranking, RRF hybrid ranking, or optional
@@ -20,10 +24,12 @@ the LLM can cite them.
 - Persist each retrieved knowledge chunk as `knowledge_chunk` Evidence with ranking diagnostics.
 - Validate model output and prove every cited evidence UUID belongs to the current investigation.
 - Evaluate semantic, hybrid, and reranked retrieval against a fixed 12-query benchmark.
+- Evaluate full diagnosis quality against ten fixed incidents and controlled Evidence fixtures.
+- Store an accept/reject human review separately without rewriting the AI conclusion.
 - Display collected GitHub/knowledge Evidence separately from the AI preliminary hypothesis.
 
-There is no LangChain, LangGraph, Redis, queue, background worker, multi-agent architecture,
-file-upload pipeline, PDF parsing, or GitHub mutation capability.
+There is no LangChain, LangGraph, Redis, external queue, multi-agent architecture, file-upload
+pipeline, PDF parsing, or GitHub mutation capability.
 
 ## Architecture
 
@@ -31,12 +37,15 @@ file-upload pipeline, PDF parsing, or GitHub mutation capability.
 knowledge/*.md -> deterministic chunker -> Gemini embedding provider
               -> FastAPI repository -> Supabase knowledge_sources/knowledge_chunks
 
-Incident -> bounded InvestigationService
+Incident -> atomic PostgreSQL enqueue -> HTTP 202
+         -> worker claims with FOR UPDATE SKIP LOCKED + expiring lease
+         -> bounded InvestigationService
          -> LLM proposes GitHub read tool or search_knowledge(query, top_k)
          -> Python validates tool and fixes repository scope from the Incident
          -> semantic + lexical retrieval -> RRF -> optional validated rerank
          -> bounded chunks persisted as Evidence -> returned to LLM
          -> Pydantic conclusion + database-backed citation ownership check
+         -> terminal job/investigation state -> browser polling + separate human review
 ```
 
 The browser never receives `SUPABASE_KEY`, `GITHUB_TOKEN`, `LLM_API_KEY`, or an embedding key,
@@ -48,7 +57,7 @@ and it never writes business data directly to Supabase. See
 
 - Node.js 20.9+ (verified with Node.js 24)
 - Python 3.12+
-- Supabase PostgreSQL with the four migrations below
+- Supabase PostgreSQL with the seven migrations below
 - A server-only Supabase service-role/secret key
 - A least-privilege GitHub token for investigation repositories
 - An OpenAI-compatible chat model with tool calling and JSON output support
@@ -76,6 +85,8 @@ Fill `.env`; it is ignored by Git. Apply migrations in order:
 3. `supabase/migrations/202608050002_day2_investigation_runtime_metadata.sql`
 4. `supabase/migrations/202608060001_day3_knowledge_retrieval.sql`
 5. `supabase/migrations/202608060002_day3_fix_knowledge_replacement.sql`
+6. `supabase/migrations/20260806084343_day4_async_investigations.sql`
+7. `supabase/migrations/20260806093000_day4_server_timestamps.sql`
 
 ## Ingest and inspect knowledge
 
@@ -123,11 +134,42 @@ stored vector as exactly 768 dimensions. The live RAG verifier completed investi
 `3aa30109-98b0-46b9-9b1e-21eddcc5d59f`, persisted 13 Evidence rows (10 knowledge), cited three
 knowledge Evidence UUIDs, and passed the incident/investigation ownership check.
 
+## Measured Day 4 results
+
+The unchanged ten-scenario incident benchmark was executed on 2026-08-06 with real DeepSeek
+`deepseek-chat` calls and fixed GitHub/knowledge tool fixtures. The production six-call limit stayed
+in force; `investigation_v2` tells the model to stop once it has a plausible culprit and corroboration.
+
+| Metric | Result |
+| --- | ---: |
+| Completion rate | 1.000 (10/10) |
+| Culprit accuracy | 1.000 |
+| Citation precision / recall | 1.000 / 1.000 |
+| Invalid citation rate | 0.000 |
+| Average tool calls | 4.20 |
+| Average investigation latency | 7,896.5 ms |
+| Average model confidence | 0.615 |
+| High-confidence incorrect diagnoses | 0 |
+
+All ten final cases completed correctly, so confidence-on-incorrect is `n/a`; this does not establish
+general model accuracy or calibrate confidence as a probability. The first live run completed only
+2/10 because the model repeatedly used the full tool budget. Tightening only the production prompt's
+budget guidance—without changing fixtures, expected answers, or the six-call limit—produced the
+committed final run. See the [summary](docs/evaluation/incident_evaluation.md) and
+[per-scenario JSON](docs/evaluation/incident_evaluation.json).
+
+Live Supabase verification proved one claim under two concurrent workers, idempotent duplicate
+enqueue, stale-lease reclamation on attempt two, one-second retry scheduling, exhaustion at attempt
+two, and permanent failure on attempt one. The real HTTP flow returned `202` in 1,322.58 ms and then
+completed in 46,031 ms after four tools and 17 persisted Evidence rows. Browser polling showed the
+active stage and completed with no console warnings/errors.
+
 ## Run
 
 Backend, from `apps/api` with the virtual environment active:
 
 ```powershell
+$env:INVESTIGATION_WORKER_ENABLED="true"
 uvicorn app.main:app --reload --port 8000 --env-file ..\..\.env
 ```
 
@@ -147,8 +189,8 @@ Open `http://localhost:3000`. API health, OpenAPI, and the developer retrieval e
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest apps\api\tests
-.\.venv\Scripts\python.exe -m ruff check apps\api\app apps\api\tests
-.\.venv\Scripts\python.exe -m mypy apps\api\app apps\api\tests
+.\.venv\Scripts\python.exe -m ruff check apps\api\app apps\api\tests apps\api\scripts
+.\.venv\Scripts\python.exe -m mypy --strict apps\api\app apps\api\tests apps\api\scripts
 npm run lint:web
 npm run typecheck:web
 npm run build:web
@@ -163,6 +205,12 @@ database ownership check:
 $env:PYTHONPATH="apps/api"
 .\.venv\Scripts\python.exe apps\api\scripts\live_day3_verification.py `
   --repository owner/repository
+
+.\.venv\Scripts\python.exe apps\api\scripts\live_day4_verification.py `
+  --mode queue --repository owner/repository
+
+.\.venv\Scripts\python.exe apps\api\scripts\evaluate_incidents.py `
+  --benchmark evaluation\incident_benchmark.json --output-dir docs\evaluation
 ```
 
 ## Environment variables
@@ -189,6 +237,11 @@ $env:PYTHONPATH="apps/api"
 | `KNOWLEDGE_RERANK_ENABLED` | no | retrieval | Default `true`; safe RRF fallback |
 | `MAX_TOOL_CALLS` | no | investigation | Default `6`, bounded `1..20` |
 | `FINAL_OUTPUT_RETRIES` | no | investigation | Default one correction attempt |
+| `INVESTIGATION_WORKER_ENABLED` | no | FastAPI | Default `false`; set `true` for a processing worker |
+| `INVESTIGATION_WORKER_POLL_SECONDS` | no | worker | Default `1.0` |
+| `INVESTIGATION_JOB_LEASE_SECONDS` | no | worker | Default `240` |
+| `INVESTIGATION_JOB_MAX_ATTEMPTS` | no | worker | Default `3` |
+| `INVESTIGATION_RETRY_BASE_SECONDS` | no | worker | Default `5`; exponential backoff base |
 | `CORS_ORIGINS` | no | FastAPI | Default `http://localhost:3000` |
 | `NEXT_PUBLIC_API_URL` | no | browser | Default `http://localhost:8000` |
 
@@ -198,7 +251,7 @@ absent, so do not expose this service publicly.
 ## Roadmap
 
 - **Days 1-3:** implemented foundation, evidence-grounded GitHub investigation, and evaluated RAG.
-- **Day 4:** durable execution and operational visibility without weakening evidence controls.
+- **Day 4:** implemented durable execution, progress/review UI, and fixed diagnosis evaluation.
 - **Day 5:** security hardening, deployment readiness, and end-to-end delivery.
 
 Future directions are not current capabilities.
