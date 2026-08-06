@@ -86,6 +86,7 @@ class SupabaseInvestigationRepository:
                 "summary": result.summary,
                 "confidence": result.confidence,
                 "suspected_change": result.suspected_change,
+                "suspected_culprit_id": result.suspected_culprit_id,
                 "supporting_evidence_ids": [str(item) for item in result.supporting_evidence_ids],
                 "missing_information": result.missing_information,
                 "recommended_next_steps": result.recommended_next_steps,

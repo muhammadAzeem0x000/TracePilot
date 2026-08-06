@@ -86,6 +86,7 @@ class PreliminaryInvestigationResult(BaseModel):
     summary: str = Field(min_length=1, max_length=4_000)
     confidence: float = Field(ge=0.0, le=1.0)
     suspected_change: str | None = Field(max_length=2_000)
+    suspected_culprit_id: str | None = Field(default=None, min_length=1, max_length=500)
     supporting_evidence_ids: list[UUID] = Field(max_length=20)
     missing_information: list[str] = Field(max_length=20)
     recommended_next_steps: list[str] = Field(max_length=20)
@@ -122,6 +123,7 @@ class InvestigationResponse(BaseModel):
     summary: str | None
     confidence: float | None
     suspected_change: str | None
+    suspected_culprit_id: str | None = None
     supporting_evidence_ids: list[UUID] = Field(default_factory=list)
     missing_information: list[str] = Field(default_factory=list)
     recommended_next_steps: list[str] = Field(default_factory=list)

@@ -311,6 +311,7 @@ export default function Home() {
                   {latestInvestigation.status !== "completed" ? <div className="progress-copy"><span className="progress-dot" aria-hidden="true" /><div><strong>Background worker active</strong><p>This page is polling durable progress. You can safely navigate away.</p></div></div> : <>
                   <h3>Summary</h3><p>{latestInvestigation.summary ?? "Awaiting a conclusion."}</p>
                   <h3>Suspected change</h3><p>{latestInvestigation.suspected_change ?? "No specific change identified."}</p>
+                  <h3>Suspected culprit ID</h3><p className="mono">{latestInvestigation.suspected_culprit_id ?? "No evidence source selected."}</p>
                   <h3>Supporting evidence</h3>{latestInvestigation.supporting_evidence_ids.length === 0 ? <p>None cited.</p> : <ul>{latestInvestigation.supporting_evidence_ids.map((id) => <li key={id}><a href={`#evidence-${id}`} className="mono">{id}</a></li>)}</ul>}
                   <h3>Missing information</h3><ul>{latestInvestigation.missing_information.map((item) => <li key={item}>{item}</li>)}</ul>
                   <h3>Recommended next steps</h3><ol>{latestInvestigation.recommended_next_steps.map((item) => <li key={item}>{item}</li>)}</ol>

@@ -21,6 +21,8 @@ create type public.investigation_review_decision as enum ('accepted', 'rejected'
 
 alter table public.investigations
 add column stage public.investigation_stage,
+add column suspected_culprit_id text
+    check (suspected_culprit_id is null or char_length(suspected_culprit_id) between 1 and 500),
 add column tool_call_count integer not null default 0 check (tool_call_count >= 0),
 add column duration_ms integer check (duration_ms is null or duration_ms >= 0);
 

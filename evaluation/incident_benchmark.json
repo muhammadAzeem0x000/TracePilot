@@ -1,0 +1,332 @@
+[
+  {
+    "id": "checkout_schema_gap",
+    "incident": {
+      "title": "Checkout writes fail only on the new release",
+      "description": "HTTP 500 responses began after the 14:00 deployment. Reads remain healthy, but creating a checkout fails in the production environment.",
+      "severity": "critical",
+      "started_at": "2026-08-01T14:07:00Z",
+      "repository_full_name": "tracepilot/evaluation-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/evaluation-fixtures@1111111111111111111111111111111111111111",
+        "content": "{\"sha\":\"1111111111111111111111111111111111111111\",\"message\":\"Read checkout coupon_code during order creation; migration exists locally but deploy manifest omits 20260801_add_coupon_code.sql\",\"author\":\"mina\",\"timestamp\":\"2026-08-01T13:42:00Z\"}",
+        "metadata": {"sha": "1111111111111111111111111111111111111111"}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/runbooks/database-migrations.md#chunk-eval-1",
+        "content": "Production write failures after a deploy can indicate application code referencing a column before its migration was applied. Compare the deployment manifest with migration history.",
+        "metadata": {"knowledge_source_type": "runbook"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/evaluation-fixtures@1111111111111111111111111111111111111111",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/evaluation-fixtures@1111111111111111111111111111111111111111",
+      "knowledge/runbooks/database-migrations.md#chunk-eval-1"
+    ],
+    "ground_truth": "The release referenced coupon_code while its production migration was omitted."
+  },
+  {
+    "id": "refund_duplicate_execution",
+    "incident": {
+      "title": "Refund totals exceed submitted requests",
+      "description": "A small set of customers received two refunds after workers were restarted during a provider slowdown. Request logs show no duplicate client submissions.",
+      "severity": "high",
+      "started_at": "2026-08-01T16:20:00Z",
+      "repository_full_name": "tracepilot/evaluation-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/evaluation-fixtures@2222222222222222222222222222222222222222",
+        "content": "{\"sha\":\"2222222222222222222222222222222222222222\",\"message\":\"Retry refund jobs after lease timeout; remove idempotency key because provider rejects repeated headers\",\"author\":\"omar\",\"timestamp\":\"2026-08-01T15:58:00Z\"}",
+        "metadata": {"sha": "2222222222222222222222222222222222222222"}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/past_incidents/duplicate-refund-jobs.md#chunk-eval-2",
+        "content": "A worker restart can replay leased jobs. Refund side effects require a stable idempotency key across attempts.",
+        "metadata": {"knowledge_source_type": "past_incident"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/evaluation-fixtures@2222222222222222222222222222222222222222",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/evaluation-fixtures@2222222222222222222222222222222222222222",
+      "knowledge/past_incidents/duplicate-refund-jobs.md#chunk-eval-2"
+    ],
+    "ground_truth": "Removing the stable idempotency key made lease retries duplicate refund side effects."
+  },
+  {
+    "id": "catalog_latency_fanout",
+    "incident": {
+      "title": "Catalog latency rises with result size",
+      "description": "The catalog endpoint remains correct but p95 latency grows almost linearly with the number of products returned. Database CPU increased after a serializer cleanup.",
+      "severity": "high",
+      "started_at": "2026-08-02T09:12:00Z",
+      "repository_full_name": "tracepilot/evaluation-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_pull_requests",
+        "source_type": "github_pull_request",
+        "source_reference": "tracepilot/evaluation-fixtures#303",
+        "content": "{\"number\":303,\"title\":\"Simplify product serializer\",\"description\":\"Load inventory inside serialize_product so each response uses fresh availability. The list endpoint calls this once per product.\",\"state\":\"closed\",\"merged_at\":\"2026-08-02T08:40:00Z\"}",
+        "metadata": {"pull_number": 303}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/past_incidents/catalog-n-plus-one.md#chunk-eval-3",
+        "content": "Latency proportional to result count with elevated database CPU is characteristic of per-row inventory queries in serialization.",
+        "metadata": {"knowledge_source_type": "past_incident"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/evaluation-fixtures#303",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/evaluation-fixtures#303",
+      "knowledge/past_incidents/catalog-n-plus-one.md#chunk-eval-3"
+    ],
+    "ground_truth": "PR 303 introduced an N+1 inventory query in the product serializer."
+  },
+  {
+    "id": "auth_environment_mismatch",
+    "incident": {
+      "title": "Valid sessions rejected in production only",
+      "description": "Login succeeds and returns a token, but API requests immediately receive 401 in production. Staging is unaffected after the same application build.",
+      "severity": "critical",
+      "started_at": "2026-08-02T11:05:00Z",
+      "repository_full_name": "tracepilot/evaluation-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/evaluation-fixtures@4444444444444444444444444444444444444444",
+        "content": "{\"sha\":\"4444444444444444444444444444444444444444\",\"message\":\"Rename AUTH_ISSUER to AUTH_PUBLIC_ISSUER in production template; API still reads AUTH_ISSUER\",\"author\":\"sara\",\"timestamp\":\"2026-08-02T10:31:00Z\"}",
+        "metadata": {"sha": "4444444444444444444444444444444444444444"}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/runbooks/authentication-configuration.md#chunk-eval-4",
+        "content": "When one environment rejects otherwise valid tokens, compare issuer and audience values consumed by the API against deployed environment variable names.",
+        "metadata": {"knowledge_source_type": "runbook"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/evaluation-fixtures@4444444444444444444444444444444444444444",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/evaluation-fixtures@4444444444444444444444444444444444444444",
+      "knowledge/runbooks/authentication-configuration.md#chunk-eval-4"
+    ],
+    "ground_truth": "The production template renamed the issuer variable without updating the API consumer."
+  },
+  {
+    "id": "payment_retry_storm",
+    "incident": {
+      "title": "Payment requests amplify during provider slowness",
+      "description": "During a 20-second provider degradation, outbound payment traffic tripled and checkout workers saturated. Normal traffic returned when the provider recovered.",
+      "severity": "critical",
+      "started_at": "2026-08-02T18:44:00Z",
+      "repository_full_name": "tracepilot/evaluation-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_pull_requests",
+        "source_type": "github_pull_request",
+        "source_reference": "tracepilot/evaluation-fixtures#505",
+        "content": "{\"number\":505,\"title\":\"Make payment retries more responsive\",\"description\":\"Retry timeouts immediately up to five times; remove jitter and the total retry deadline.\",\"state\":\"closed\",\"merged_at\":\"2026-08-02T17:50:00Z\"}",
+        "metadata": {"pull_number": 505}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/runbooks/external-api-timeouts.md#chunk-eval-5",
+        "content": "External API retries need exponential backoff, jitter, and a total deadline. Immediate retries amplify a slow dependency.",
+        "metadata": {"knowledge_source_type": "runbook"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/evaluation-fixtures#505",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/evaluation-fixtures#505",
+      "knowledge/runbooks/external-api-timeouts.md#chunk-eval-5"
+    ],
+    "ground_truth": "PR 505 replaced bounded backoff with immediate unbounded retries, causing amplification."
+  },
+  {
+    "id": "tenant_scope_regression",
+    "incident": {
+      "title": "Reports include records outside the selected account",
+      "description": "The new report export returns the expected rows plus a small number belonging to other accounts. Interactive report views remain correctly scoped.",
+      "severity": "critical",
+      "started_at": "2026-08-03T07:24:00Z",
+      "repository_full_name": "tracepilot/evaluation-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/evaluation-fixtures@6666666666666666666666666666666666666666",
+        "content": "{\"sha\":\"6666666666666666666666666666666666666666\",\"message\":\"Reuse report export query outside request context; remove tenant_id predicate because RLS is enabled in web sessions\",\"author\":\"li\",\"timestamp\":\"2026-08-03T06:55:00Z\"}",
+        "metadata": {"sha": "6666666666666666666666666666666666666666"}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/architecture/tenant-authorization.md#chunk-eval-6",
+        "content": "Offline export workers use a privileged database role and must apply tenant_id explicitly; web-session RLS does not protect worker queries.",
+        "metadata": {"knowledge_source_type": "architecture"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/evaluation-fixtures@6666666666666666666666666666666666666666",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/evaluation-fixtures@6666666666666666666666666666666666666666",
+      "knowledge/architecture/tenant-authorization.md#chunk-eval-6"
+    ],
+    "ground_truth": "The export worker removed explicit tenant scoping while running with a role that bypasses web RLS."
+  },
+  {
+    "id": "deployment_port_regression",
+    "incident": {
+      "title": "New tasks never become ready",
+      "description": "The deployment completed, but every new task fails readiness checks while the process itself reports that startup succeeded. Rolling back restores service.",
+      "severity": "high",
+      "started_at": "2026-08-03T12:02:00Z",
+      "repository_full_name": "tracepilot/evaluation-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/evaluation-fixtures@7777777777777777777777777777777777777777",
+        "content": "{\"sha\":\"7777777777777777777777777777777777777777\",\"message\":\"Move API to port 8081; deployment readiness probe still targets 8080\",\"author\":\"nora\",\"timestamp\":\"2026-08-03T11:37:00Z\"}",
+        "metadata": {"sha": "7777777777777777777777777777777777777777"}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/runbooks/deployment-rollback.md#chunk-eval-7",
+        "content": "If a process starts but never becomes ready, compare its listening port and path with the deployed readiness probe before changing application logic.",
+        "metadata": {"knowledge_source_type": "runbook"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/evaluation-fixtures@7777777777777777777777777777777777777777",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/evaluation-fixtures@7777777777777777777777777777777777777777",
+      "knowledge/runbooks/deployment-rollback.md#chunk-eval-7"
+    ],
+    "ground_truth": "The application port changed while the deployment readiness probe retained the old port."
+  },
+  {
+    "id": "attachment_limit_regression",
+    "incident": {
+      "title": "Ordinary document uploads are rejected",
+      "description": "PDF uploads around 2 MB began returning validation errors after a security hardening release. Tiny text attachments continue to succeed.",
+      "severity": "medium",
+      "started_at": "2026-08-03T15:40:00Z",
+      "repository_full_name": "tracepilot/evaluation-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_pull_requests",
+        "source_type": "github_pull_request",
+        "source_reference": "tracepilot/evaluation-fixtures#808",
+        "content": "{\"number\":808,\"title\":\"Centralize upload limits\",\"description\":\"Convert configured megabytes to bytes. The validator multiplies by 1024 while the config loader already converted the value to kilobytes.\",\"state\":\"closed\",\"merged_at\":\"2026-08-03T15:10:00Z\"}",
+        "metadata": {"pull_number": 808}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/architecture/upload-validation.md#chunk-eval-8",
+        "content": "Upload size limits are stored in bytes at runtime. Unit conversion must occur exactly once at the configuration boundary.",
+        "metadata": {"knowledge_source_type": "architecture"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/evaluation-fixtures#808",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/evaluation-fixtures#808",
+      "knowledge/architecture/upload-validation.md#chunk-eval-8"
+    ],
+    "ground_truth": "PR 808 double-converted upload limit units, shrinking the effective limit."
+  },
+  {
+    "id": "rate_limit_window_mismatch",
+    "incident": {
+      "title": "API throttles low-volume customers",
+      "description": "Customers sending fewer than ten requests per minute receive 429 responses. The issue began after rate-limit configuration was consolidated.",
+      "severity": "high",
+      "started_at": "2026-08-04T08:16:00Z",
+      "repository_full_name": "tracepilot/evaluation-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/evaluation-fixtures@9999999999999999999999999999999999999999",
+        "content": "{\"sha\":\"9999999999999999999999999999999999999999\",\"message\":\"Share rate limit window config; pass RATE_LIMIT_WINDOW_MS to limiter expecting seconds\",\"author\":\"ivan\",\"timestamp\":\"2026-08-04T07:48:00Z\"}",
+        "metadata": {"sha": "9999999999999999999999999999999999999999"}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/runbooks/rate-limits.md#chunk-eval-9",
+        "content": "Unexpected low-volume throttling often follows a window-unit mismatch. Confirm whether the limiter expects seconds or milliseconds.",
+        "metadata": {"knowledge_source_type": "runbook"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/evaluation-fixtures@9999999999999999999999999999999999999999",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/evaluation-fixtures@9999999999999999999999999999999999999999",
+      "knowledge/runbooks/rate-limits.md#chunk-eval-9"
+    ],
+    "ground_truth": "The limiter received a millisecond window value through an API that expects seconds."
+  },
+  {
+    "id": "stale_search_endpoint",
+    "incident": {
+      "title": "Search traffic still reaches retired cluster",
+      "description": "A deployment intended to move search traffic to the new cluster succeeded, but production continues querying the old cluster. Local and staging use the new endpoint.",
+      "severity": "high",
+      "started_at": "2026-08-04T10:33:00Z",
+      "repository_full_name": "tracepilot/evaluation-fixtures"
+    },
+    "evidence": [
+      {
+        "tool_name": "list_recent_commits",
+        "source_type": "github_commit",
+        "source_reference": "tracepilot/evaluation-fixtures@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "content": "{\"sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"message\":\"Rename SEARCH_URL to SEARCH_ENDPOINT in application; production secret manifest still exports SEARCH_URL\",\"author\":\"aya\",\"timestamp\":\"2026-08-04T10:02:00Z\"}",
+        "metadata": {"sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+      },
+      {
+        "tool_name": "search_knowledge",
+        "source_type": "knowledge_chunk",
+        "source_reference": "knowledge/past_incidents/stale-environment-value.md#chunk-eval-10",
+        "content": "Configuration renames can leave production secret manifests stale. Applications may then fall back to a deprecated default endpoint.",
+        "metadata": {"knowledge_source_type": "past_incident"}
+      }
+    ],
+    "expected_culprit_id": "tracepilot/evaluation-fixtures@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "acceptable_culprit_ids": [],
+    "relevant_evidence_source_references": [
+      "tracepilot/evaluation-fixtures@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "knowledge/past_incidents/stale-environment-value.md#chunk-eval-10"
+    ],
+    "ground_truth": "The application variable was renamed without updating the production secret manifest."
+  }
+]

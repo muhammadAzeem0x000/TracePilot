@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import ValidationError
 
-from app.ai.prompts.investigation_v1 import PROMPT_VERSION, SYSTEM_PROMPT, build_incident_prompt
+from app.ai.prompts.investigation_v2 import PROMPT_VERSION, SYSTEM_PROMPT, build_incident_prompt
 from app.ai.provider import LLMProvider
 from app.ai.tool_definitions import INVESTIGATION_TOOL_DEFINITIONS
 from app.repositories.evidence import EvidenceRepository
@@ -365,7 +365,8 @@ class InvestigationService:
                             "valid JSON. "
                             f"You may cite only these evidence IDs: {json.dumps(allowed_ids)}. "
                             "Confidence must be from 0.0 through 1.0, and every field in "
-                            "the specified JSON shape is required."
+                            "the specified JSON shape is required. suspected_culprit_id must be "
+                            "an exact source_reference from retrieved evidence or null."
                         ),
                     )
                 )
@@ -409,6 +410,13 @@ class InvestigationService:
             raise EvidenceReferenceValidationError(
                 "Final output cited evidence outside the current investigation context"
             )
+        if result.suspected_culprit_id is not None:
+            evidence = await self._evidence.list_for_investigation(context.investigation_id)
+            source_references = {item.source_reference for item in evidence}
+            if result.suspected_culprit_id not in source_references:
+                raise EvidenceReferenceValidationError(
+                    "Final output used a culprit ID that was not retrieved as evidence"
+                )
 
     @staticmethod
     def _serialize_evidence_for_model(evidence: list[EvidenceResponse]) -> str:

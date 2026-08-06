@@ -77,6 +77,7 @@ export interface Investigation {
   summary: string | null;
   confidence: number | null;
   suspected_change: string | null;
+  suspected_culprit_id: string | null;
   supporting_evidence_ids: string[];
   missing_information: string[];
   recommended_next_steps: string[];

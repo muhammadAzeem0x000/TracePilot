@@ -499,11 +499,13 @@ class ToolThenConclusionLLM:
         arguments: str = '{"limit":1}',
         cited_id: UUID | None = None,
         invalid_final: str | None = None,
+        culprit_id: str | None = None,
     ) -> None:
         self.tool_name = tool_name
         self.arguments = arguments
         self.cited_id = cited_id
         self.invalid_final = invalid_final
+        self.culprit_id = culprit_id
         self.calls = 0
         self.advertised_tool_names: list[str] = []
 
@@ -526,10 +528,10 @@ class ToolThenConclusionLLM:
             )
         if self.invalid_final is not None:
             return ModelTurn(content=self.invalid_final)
+        tool_messages = [message for message in messages if message.role == "tool"]
+        tool_payload = json.loads(tool_messages[-1].content or "{}")
         cited_id = self.cited_id
         if cited_id is None:
-            tool_messages = [message for message in messages if message.role == "tool"]
-            tool_payload = json.loads(tool_messages[-1].content or "{}")
             cited_id = UUID(tool_payload["evidence"][0]["evidence_id"])
         return ModelTurn(
             content=json.dumps(
@@ -537,6 +539,8 @@ class ToolThenConclusionLLM:
                     "summary": "A recent repository change is temporally relevant.",
                     "confidence": 0.62,
                     "suspected_change": "The retry policy change may be related.",
+                    "suspected_culprit_id": self.culprit_id
+                    or tool_payload["evidence"][0]["source_reference"],
                     "supporting_evidence_ids": [str(cited_id)],
                     "missing_information": ["Runtime logs are not available."],
                     "recommended_next_steps": ["Compare deployment and commit times."],
@@ -791,6 +795,19 @@ def test_evidence_from_another_incident_is_rejected() -> None:
         incident,
         ToolThenConclusionLLM(cited_id=foreign.id),
         evidence=evidence,
+    )
+
+    with pytest.raises(InvestigationExecutionError):
+        run_async(service.run(incident.id))
+
+    assert next(iter(investigations.items.values())).status is InvestigationStatus.FAILED
+
+
+def test_invented_culprit_source_reference_is_rejected() -> None:
+    incident = make_incident()
+    service, _evidence, investigations = make_service(
+        incident,
+        ToolThenConclusionLLM(culprit_id="attacker/repository@invented"),
     )
 
     with pytest.raises(InvestigationExecutionError):
