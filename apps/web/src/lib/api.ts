@@ -101,6 +101,39 @@ export interface InvestigationAccepted {
   already_active: boolean;
 }
 
+export interface PublicConfig {
+  public_demo_mode: boolean;
+  mutations_enabled: boolean;
+}
+
+export interface LatencyMetric {
+  operation_type:
+    | "queue_wait"
+    | "investigation"
+    | "llm_call"
+    | "github_tool"
+    | "embedding"
+    | "knowledge_retrieval"
+    | "rerank";
+  call_count: number;
+  total_duration_ms: number;
+  average_duration_ms: number;
+}
+
+export interface InvestigationMetrics {
+  investigation_id: string;
+  trace_ids: string[];
+  latency: LatencyMetric[];
+  input_tokens: number | null;
+  output_tokens: number | null;
+  total_tokens: number | null;
+  estimated_cost_usd: number | null;
+  cost_status: string;
+  fallback_used: boolean;
+  serving_providers: string[];
+  serving_models: string[];
+}
+
 interface EvidenceListResponse {
   items: Evidence[];
   count: number;
@@ -138,6 +171,20 @@ export async function listIncidents(): Promise<Incident[]> {
   const response = await fetch(`${apiUrl}/api/v1/incidents`, { cache: "no-store" });
   const result = await parseResponse<IncidentListResponse>(response);
   return result.items;
+}
+
+export async function getPublicConfig(): Promise<PublicConfig> {
+  const response = await fetch(`${apiUrl}/api/v1/config`, { cache: "no-store" });
+  return parseResponse<PublicConfig>(response);
+}
+
+export async function getInvestigationMetrics(
+  investigationId: string,
+): Promise<InvestigationMetrics> {
+  const response = await fetch(`${apiUrl}/api/v1/investigations/${investigationId}/metrics`, {
+    cache: "no-store",
+  });
+  return parseResponse<InvestigationMetrics>(response);
 }
 
 export async function createIncident(input: IncidentCreate): Promise<Incident> {

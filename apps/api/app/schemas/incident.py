@@ -63,5 +63,10 @@ class HealthResponse(BaseModel):
     timestamp: datetime
 
 
+class PublicConfigResponse(BaseModel):
+    public_demo_mode: bool
+    mutations_enabled: bool
+
+
 class ErrorResponse(BaseModel):
     detail: str

@@ -1,15 +1,19 @@
 from dataclasses import dataclass
 
 from app.ai.embeddings import GeminiEmbeddingProvider
-from app.ai.provider import OpenAICompatibleLLMProvider
+from app.ai.provider import FallbackLLMProvider, LLMProvider, OpenAICompatibleLLMProvider
 from app.config.settings import Settings
 from app.db.supabase import SupabaseRestClient
 from app.integrations.github import GitHubClient
+from app.observability.pricing import PricingRegistry
+from app.observability.providers import ObservedEmbeddingProvider, ObservedLLMProvider
+from app.observability.tools import ObservedInvestigationToolExecutor
 from app.repositories.evidence import SupabaseEvidenceRepository
 from app.repositories.incidents import SupabaseIncidentRepository
 from app.repositories.investigations import SupabaseInvestigationRepository
 from app.repositories.jobs import SupabaseInvestigationJobRepository
 from app.repositories.knowledge import SupabaseKnowledgeRepository
+from app.repositories.operations import SupabaseAIOperationRepository
 from app.repositories.reviews import SupabaseInvestigationReviewRepository
 from app.retrieval.context import ContextAssembler
 from app.retrieval.reranking import KnowledgeReranker
@@ -39,12 +43,30 @@ def build_investigation_runtime(settings: Settings) -> InvestigationRuntime:
     evidence = SupabaseEvidenceRepository(storage)
     jobs = SupabaseInvestigationJobRepository(storage)
     reviews = SupabaseInvestigationReviewRepository(storage)
-    llm = OpenAICompatibleLLMProvider(llm_url, llm_key, llm_model)
-    embeddings = GeminiEmbeddingProvider(
-        embedding_url,
-        embedding_key,
-        embedding_model,
-        dimensions,
+    operations = SupabaseAIOperationRepository(storage)
+    base_llm: LLMProvider = OpenAICompatibleLLMProvider(
+        llm_url, llm_key, llm_model, settings.llm_provider_name
+    )
+    fallback = settings.optional_fallback_llm()
+    if fallback is not None:
+        fallback_url, fallback_key, fallback_model, fallback_name = fallback
+        base_llm = FallbackLLMProvider(
+            base_llm,
+            OpenAICompatibleLLMProvider(fallback_url, fallback_key, fallback_model, fallback_name),
+        )
+    llm = ObservedLLMProvider(
+        base_llm,
+        operations,
+        PricingRegistry.from_json(settings.ai_pricing_json, settings.ai_pricing_source_date),
+    )
+    embeddings = ObservedEmbeddingProvider(
+        GeminiEmbeddingProvider(
+            embedding_url,
+            embedding_key,
+            embedding_model,
+            dimensions,
+        ),
+        operations,
     )
     reranker = KnowledgeReranker(llm) if settings.knowledge_rerank_enabled else None
     retrieval = KnowledgeRetrievalService(
@@ -60,14 +82,18 @@ def build_investigation_runtime(settings: Settings) -> InvestigationRuntime:
         evidence,
         jobs,
         reviews,
-        InvestigationToolExecutor(
-            GitHubToolExecutor(GitHubClient(github_url, github_token), evidence),
-            KnowledgeToolExecutor(retrieval, evidence),
+        ObservedInvestigationToolExecutor(
+            InvestigationToolExecutor(
+                GitHubToolExecutor(GitHubClient(github_url, github_token), evidence),
+                KnowledgeToolExecutor(retrieval, evidence),
+            ),
+            operations,
         ),
         llm,
         max_tool_calls=settings.max_tool_calls,
         final_output_retries=settings.final_output_retries,
         max_job_attempts=settings.investigation_job_max_attempts,
+        operation_repository=operations,
     )
     return InvestigationRuntime(
         service=service,

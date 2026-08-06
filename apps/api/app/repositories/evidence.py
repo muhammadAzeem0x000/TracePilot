@@ -87,4 +87,3 @@ class SupabaseEvidenceRepository:
             return [EvidenceResponse.model_validate(record) for record in records]
         except (StorageError, ValidationError) as exc:
             raise RepositoryError("Unable to list evidence") from exc
-

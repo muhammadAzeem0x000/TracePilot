@@ -1,2 +1,1 @@
 """Allow-listed model tools."""
-

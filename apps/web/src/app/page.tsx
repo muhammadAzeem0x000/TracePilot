@@ -7,8 +7,11 @@ import {
   Evidence,
   getIncident,
   getInvestigation,
+  getInvestigationMetrics,
+  getPublicConfig,
   Incident,
   Investigation,
+  InvestigationMetrics,
   listEvidence,
   listIncidents,
   listInvestigations,
@@ -71,6 +74,8 @@ export default function Home() {
   const [running, setRunning] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [reviewNote, setReviewNote] = useState("");
+  const [publicDemoMode, setPublicDemoMode] = useState(false);
+  const [metrics, setMetrics] = useState<InvestigationMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const latestInvestigation = investigations[0] ?? null;
@@ -81,9 +86,12 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
-    listIncidents()
-      .then((items) => {
-        if (active) setIncidents(items);
+    Promise.all([listIncidents(), getPublicConfig()])
+      .then(([items, config]) => {
+        if (active) {
+          setIncidents(items);
+          setPublicDemoMode(config.public_demo_mode);
+        }
       })
       .catch((reason: unknown) => {
         if (active) setError(messageFrom(reason, "Unable to load incidents"));
@@ -112,8 +120,14 @@ export default function Home() {
           ...current.filter((item) => item.id !== updated.id),
         ]);
         if (updated.status === "completed" || updated.status === "failed") {
-          const collectedEvidence = await listEvidence(selectedIncidentId);
-          if (active) setEvidence(collectedEvidence);
+          const [collectedEvidence, operationMetrics] = await Promise.all([
+            listEvidence(selectedIncidentId),
+            getInvestigationMetrics(investigationId),
+          ]);
+          if (active) {
+            setEvidence(collectedEvidence);
+            setMetrics(operationMetrics);
+          }
         }
       } catch (reason: unknown) {
         if (active) setError(messageFrom(reason, "Unable to refresh investigation progress"));
@@ -137,6 +151,11 @@ export default function Home() {
     setSelected(incident);
     setEvidence(collectedEvidence);
     setInvestigations(existingInvestigations);
+    if (existingInvestigations[0]) {
+      setMetrics(await getInvestigationMetrics(existingInvestigations[0].id));
+    } else {
+      setMetrics(null);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -160,6 +179,7 @@ export default function Home() {
       setSelected(created);
       setEvidence([]);
       setInvestigations([]);
+      setMetrics(null);
       setTitle("");
       setDescription("");
       setSeverity("medium");
@@ -229,11 +249,12 @@ export default function Home() {
   return (
     <main>
       <header className="hero">
-        <div className="eyebrow">Day 4 · Durable investigation workflow</div>
+        <div className="eyebrow">Day 5 · Observable, secure investigation workflow</div>
         <h1>TracePilot</h1>
         <p>Evidence-Grounded Incident Investigation</p>
       </header>
 
+      {publicDemoMode && <div className="notice" role="status">Public demo is read-only. Cost-bearing actions are disabled.</div>}
       {error && <div className="error" role="alert">{error}</div>}
 
       <div className="workspace">
@@ -243,6 +264,7 @@ export default function Home() {
             <div><h2>Create Incident</h2><p>Record facts and repository context.</p></div>
           </div>
           <form onSubmit={handleSubmit}>
+            <fieldset disabled={publicDemoMode} className="mutation-fieldset">
             <label>Title<input required minLength={3} maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Checkout error spike" /></label>
             <label>Description<textarea required maxLength={10000} rows={5} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What is failing, and who is affected?" /></label>
             <label>GitHub repository <span className="optional">optional</span><input pattern="[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}" value={repositoryFullName} onChange={(event) => setRepositoryFullName(event.target.value)} placeholder="owner/repository" /></label>
@@ -251,6 +273,7 @@ export default function Home() {
               <label>Started time<input required type="datetime-local" value={startedAt} onChange={(event) => setStartedAt(event.target.value)} /></label>
             </div>
             <button type="submit" disabled={submitting}>{submitting ? "Creating…" : "Create incident"}</button>
+            </fieldset>
           </form>
         </section>
 
@@ -277,7 +300,7 @@ export default function Home() {
                 <div><dt>Started</dt><dd>{formatDate(selected.started_at)}</dd></div>
                 <div><dt>Incident ID</dt><dd className="mono">{selected.id}</dd></div>
               </dl>
-              {selected.repository_full_name ? <button className="run-button" type="button" disabled={running || detailsLoading || investigationActive} onClick={handleRunInvestigation}>{running ? "Queuing…" : investigationActive ? "Investigation in progress" : "Run investigation"}</button> : <p className="notice">Add repository context to run an evidence-grounded investigation.</p>}
+              {selected.repository_full_name ? (!publicDemoMode && <button className="run-button" type="button" disabled={running || detailsLoading || investigationActive} onClick={handleRunInvestigation}>{running ? "Queuing…" : investigationActive ? "Investigation in progress" : "Run investigation"}</button>) : <p className="notice">Add repository context to run an evidence-grounded investigation.</p>}
             </article>
           )}
         </section>
@@ -315,17 +338,18 @@ export default function Home() {
                   <h3>Supporting evidence</h3>{latestInvestigation.supporting_evidence_ids.length === 0 ? <p>None cited.</p> : <ul>{latestInvestigation.supporting_evidence_ids.map((id) => <li key={id}><a href={`#evidence-${id}`} className="mono">{id}</a></li>)}</ul>}
                   <h3>Missing information</h3><ul>{latestInvestigation.missing_information.map((item) => <li key={item}>{item}</li>)}</ul>
                   <h3>Recommended next steps</h3><ol>{latestInvestigation.recommended_next_steps.map((item) => <li key={item}>{item}</li>)}</ol>
-                  <section className="human-review">
+                  {!publicDemoMode && <section className="human-review">
                     <h3>HUMAN REVIEW</h3>
                     <p className="boundary-copy">A separate human decision; it never edits the AI conclusion.</p>
                     {latestInvestigation.review ? <div className={`review-decision review-${latestInvestigation.review.decision}`}><strong>{latestInvestigation.review.decision}</strong>{latestInvestigation.review.note && <p>{latestInvestigation.review.note}</p>}<small>{formatDate(latestInvestigation.review.reviewed_at)}</small></div> : <>
                       <label>Review note <span className="optional">optional</span><textarea maxLength={2000} rows={3} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="Why do you accept or reject this preliminary conclusion?" /></label>
                       <div className="review-actions"><button type="button" disabled={reviewing} onClick={() => handleReview("accepted")}>Accept</button><button className="reject-button" type="button" disabled={reviewing} onClick={() => handleReview("rejected")}>Reject</button></div>
                     </>}
-                  </section>
+                  </section>}
                   </>}
                 </>}
                 <small className="model-note">{latestInvestigation.prompt_version} · {latestInvestigation.model_name}{latestInvestigation.duration_ms !== null ? ` · ${(latestInvestigation.duration_ms / 1000).toFixed(1)}s · ${latestInvestigation.tool_call_count} tools` : ""}</small>
+                {metrics && <details className="retrieval-details"><summary>Developer metrics</summary><dl><div><dt>Provider / model</dt><dd>{metrics.serving_providers.join(", ") || "unknown"} · {metrics.serving_models.join(", ") || "unknown"}</dd></div><div><dt>Tokens</dt><dd>{metrics.total_tokens ?? "provider did not report"}</dd></div><div><dt>Estimated cost</dt><dd>{metrics.estimated_cost_usd === null ? "unknown (pricing not configured)" : `$${metrics.estimated_cost_usd.toFixed(6)}`}</dd></div><div><dt>Fallback</dt><dd>{metrics.fallback_used ? "used" : "not used"}</dd></div></dl>{metrics.latency.map((item) => <p key={item.operation_type}>{item.operation_type.replaceAll("_", " ")}: {item.average_duration_ms.toFixed(0)} ms average ({item.call_count})</p>)}</details>}
               </div>
             )}
           </article>

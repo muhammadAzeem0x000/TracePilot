@@ -15,11 +15,17 @@ from app.services.investigation_errors import (
 
 
 class InvestigationExecutionService(Protocol):
-    async def execute(self, investigation_id: UUID) -> object: ...
+    async def execute(
+        self,
+        investigation_id: UUID,
+        job_id: UUID | None = None,
+        queued_at: datetime | None = None,
+    ) -> object: ...
 
     async def mark_retry_scheduled(self, investigation_id: UUID) -> object: ...
 
     async def mark_failed(self, investigation_id: UUID, error_message: str) -> object: ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +83,7 @@ class InvestigationWorker:
             },
         )
         try:
-            await self._investigations.execute(job.investigation_id)
+            await self._investigations.execute(job.investigation_id, job.id, job.created_at)
             await self._jobs.complete(job.id)
             logger.info(
                 "investigation_job_completed",

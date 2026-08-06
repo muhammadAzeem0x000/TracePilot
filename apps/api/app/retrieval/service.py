@@ -142,9 +142,7 @@ class KnowledgeRetrievalService:
 
         ordered_ids = sorted(scores, key=lambda item: (-scores[item], str(item)))
         return [
-            by_id[item].model_copy(
-                update={"hybrid_score": scores[item], "hybrid_rank": rank}
-            )
+            by_id[item].model_copy(update={"hybrid_score": scores[item], "hybrid_rank": rank})
             for rank, item in enumerate(ordered_ids, start=1)
         ]
 

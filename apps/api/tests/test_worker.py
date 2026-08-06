@@ -37,7 +37,12 @@ class StubExecutionService:
         self.retry_scheduled: list[UUID] = []
         self.failed: list[UUID] = []
 
-    async def execute(self, investigation_id: UUID) -> object:
+    async def execute(
+        self,
+        investigation_id: UUID,
+        _job_id: UUID | None = None,
+        _queued_at: datetime | None = None,
+    ) -> object:
         self.executed.append(investigation_id)
         outcome = self.outcomes.pop(0)
         if outcome is not None:

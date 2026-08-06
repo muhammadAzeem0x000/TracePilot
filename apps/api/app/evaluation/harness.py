@@ -405,9 +405,7 @@ def _aggregate(results: list[IncidentScenarioEvaluation]) -> IncidentEvaluationM
         average_tool_calls=fmean(item.tool_calls for item in results),
         average_latency_ms=fmean(item.latency_ms for item in results),
         average_confidence=fmean(confidences) if confidences else None,
-        average_confidence_correct=(
-            fmean(correct_confidences) if correct_confidences else None
-        ),
+        average_confidence_correct=(fmean(correct_confidences) if correct_confidences else None),
         average_confidence_incorrect=(
             fmean(incorrect_confidences) if incorrect_confidences else None
         ),

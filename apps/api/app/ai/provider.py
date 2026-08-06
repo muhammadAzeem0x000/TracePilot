@@ -30,6 +30,9 @@ class LLMUnavailableError(LLMProviderError):
 
 class LLMProvider(Protocol):
     @property
+    def provider_name(self) -> str: ...
+
+    @property
     def model_name(self) -> str: ...
 
     async def complete(
@@ -42,10 +45,17 @@ class LLMProvider(Protocol):
 class OpenAICompatibleLLMProvider:
     """Small provider boundary for OpenAI-compatible chat-completion APIs."""
 
-    def __init__(self, base_url: str, api_key: str, model: str) -> None:
+    def __init__(
+        self, base_url: str, api_key: str, model: str, provider_name: str = "openai_compatible"
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
         self._model = model
+        self._provider_name = provider_name
+
+    @property
+    def provider_name(self) -> str:
+        return self._provider_name
 
     @property
     def model_name(self) -> str:
@@ -108,6 +118,11 @@ class OpenAICompatibleLLMProvider:
                 )
                 for call in message.tool_calls
             ],
+            provider=self._provider_name,
+            model=parsed.model or self._model,
+            input_tokens=parsed.usage.prompt_tokens if parsed.usage else None,
+            output_tokens=parsed.usage.completion_tokens if parsed.usage else None,
+            total_tokens=parsed.usage.total_tokens if parsed.usage else None,
         )
 
     @staticmethod
@@ -125,3 +140,35 @@ class OpenAICompatibleLLMProvider:
                 for call in message.tool_calls
             ]
         return serialized
+
+
+class FallbackLLMProvider:
+    """Use a secondary provider only for transient availability failures."""
+
+    def __init__(self, primary: LLMProvider, fallback: LLMProvider) -> None:
+        self._primary = primary
+        self._fallback = fallback
+
+    @property
+    def provider_name(self) -> str:
+        return self._primary.provider_name
+
+    @property
+    def model_name(self) -> str:
+        return self._primary.model_name
+
+    async def complete(
+        self,
+        messages: list[ChatMessage],
+        tools: list[ToolDefinition],
+    ) -> ModelTurn:
+        try:
+            return await self._primary.complete(messages, tools)
+        except (LLMRateLimitError, LLMUnavailableError) as exc:
+            turn = await self._fallback.complete(messages, tools)
+            return turn.model_copy(
+                update={
+                    "fallback_used": True,
+                    "fallback_reason": type(exc).__name__,
+                }
+            )

@@ -1,12 +1,19 @@
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 
 from app.ai.embeddings import EmbeddingProvider, GeminiEmbeddingProvider
-from app.ai.provider import LLMProvider, OpenAICompatibleLLMProvider
+from app.ai.provider import (
+    FallbackLLMProvider,
+    LLMProvider,
+    OpenAICompatibleLLMProvider,
+)
 from app.config.settings import Settings, get_settings
 from app.db.supabase import SupabaseRestClient
 from app.integrations.github import GitHubClient, GitHubClientProtocol
+from app.observability.pricing import PricingRegistry
+from app.observability.providers import ObservedEmbeddingProvider, ObservedLLMProvider
+from app.observability.tools import ObservedInvestigationToolExecutor
 from app.repositories.evidence import EvidenceRepository, SupabaseEvidenceRepository
 from app.repositories.incidents import IncidentRepository, SupabaseIncidentRepository
 from app.repositories.investigations import (
@@ -18,6 +25,7 @@ from app.repositories.knowledge import (
     KnowledgeSearchRepository,
     SupabaseKnowledgeRepository,
 )
+from app.repositories.operations import AIOperationRepository, SupabaseAIOperationRepository
 from app.repositories.reviews import (
     InvestigationReviewRepository,
     SupabaseInvestigationReviewRepository,
@@ -69,6 +77,12 @@ def get_review_repository(
     return SupabaseInvestigationReviewRepository(client)
 
 
+def get_operation_repository(
+    client: Annotated[SupabaseRestClient, Depends(get_storage_client)],
+) -> AIOperationRepository:
+    return SupabaseAIOperationRepository(client)
+
+
 def get_github_client(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> GitHubClientProtocol:
@@ -78,16 +92,34 @@ def get_github_client(
 
 def get_llm_provider(
     settings: Annotated[Settings, Depends(get_settings)],
+    operations: Annotated[AIOperationRepository, Depends(get_operation_repository)],
 ) -> LLMProvider:
     base_url, api_key, model = settings.require_llm()
-    return OpenAICompatibleLLMProvider(base_url, api_key, model)
+    primary: LLMProvider = OpenAICompatibleLLMProvider(
+        base_url, api_key, model, settings.llm_provider_name
+    )
+    fallback = settings.optional_fallback_llm()
+    if fallback is not None:
+        fallback_url, fallback_key, fallback_model, fallback_name = fallback
+        primary = FallbackLLMProvider(
+            primary,
+            OpenAICompatibleLLMProvider(fallback_url, fallback_key, fallback_model, fallback_name),
+        )
+    return ObservedLLMProvider(
+        primary,
+        operations,
+        PricingRegistry.from_json(settings.ai_pricing_json, settings.ai_pricing_source_date),
+    )
 
 
 def get_embedding_provider(
     settings: Annotated[Settings, Depends(get_settings)],
+    operations: Annotated[AIOperationRepository, Depends(get_operation_repository)],
 ) -> EmbeddingProvider:
     base_url, api_key, model, dimensions = settings.require_embedding()
-    return GeminiEmbeddingProvider(base_url, api_key, model, dimensions)
+    return ObservedEmbeddingProvider(
+        GeminiEmbeddingProvider(base_url, api_key, model, dimensions), operations
+    )
 
 
 def get_knowledge_repository(
@@ -140,21 +172,24 @@ def get_investigation_service(
     llm: Annotated[LLMProvider, Depends(get_llm_provider)],
     retrieval: Annotated[KnowledgeRetrievalService, Depends(get_retrieval_service)],
     settings: Annotated[Settings, Depends(get_settings)],
+    operations: Annotated[AIOperationRepository, Depends(get_operation_repository)],
 ) -> InvestigationService:
+    tools = InvestigationToolExecutor(
+        GitHubToolExecutor(github, evidence),
+        KnowledgeToolExecutor(retrieval, evidence),
+    )
     return InvestigationService(
         incidents,
         investigations,
         evidence,
         jobs,
         reviews,
-        InvestigationToolExecutor(
-            GitHubToolExecutor(github, evidence),
-            KnowledgeToolExecutor(retrieval, evidence),
-        ),
+        ObservedInvestigationToolExecutor(tools, operations),
         llm,
         max_tool_calls=settings.max_tool_calls,
         final_output_retries=settings.final_output_retries,
         max_job_attempts=settings.investigation_job_max_attempts,
+        operation_repository=operations,
     )
 
 
@@ -162,3 +197,16 @@ InvestigationServiceDependency = Annotated[
     InvestigationService,
     Depends(get_investigation_service),
 ]
+
+
+def require_mutations_enabled(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    if settings.public_demo_mode:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Mutations are disabled while PUBLIC_DEMO_MODE is enabled",
+        )
+
+
+MutationEnabledDependency = Annotated[None, Depends(require_mutations_enabled)]

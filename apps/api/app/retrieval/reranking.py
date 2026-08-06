@@ -2,8 +2,10 @@ from pydantic import ValidationError
 
 from app.ai.prompts.rerank_v1 import SYSTEM_PROMPT, build_rerank_prompt
 from app.ai.provider import LLMProvider
+from app.observability.tracing import operation_label
 from app.schemas.knowledge import KnowledgeSearchResult, RerankResult
 from app.schemas.llm import ChatMessage
+from app.schemas.operations import AIOperationType
 
 
 class RerankingValidationError(Exception):
@@ -21,13 +23,14 @@ class KnowledgeReranker:
     ) -> list[KnowledgeSearchResult]:
         if not candidates:
             return []
-        turn = await self._llm.complete(
-            [
-                ChatMessage(role="system", content=SYSTEM_PROMPT),
-                ChatMessage(role="user", content=build_rerank_prompt(query, candidates)),
-            ],
-            [],
-        )
+        async with operation_label(AIOperationType.RERANK, "rerank_v1"):
+            turn = await self._llm.complete(
+                [
+                    ChatMessage(role="system", content=SYSTEM_PROMPT),
+                    ChatMessage(role="user", content=build_rerank_prompt(query, candidates)),
+                ],
+                [],
+            )
         if turn.content is None:
             raise RerankingValidationError("Reranker returned no structured content")
         try:

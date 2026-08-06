@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,6 +20,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    app_environment: Literal["development", "test", "production"] = "development"
+    public_demo_mode: bool = False
+    allow_anonymous_production_writes: bool = False
     supabase_url: str | None = None
     supabase_key: str | None = None
     github_token: str | None = None
@@ -29,6 +33,13 @@ class Settings(BaseSettings):
     )
     llm_model: str = "deepseek-chat"
     llm_base_url: str = "https://api.deepseek.com"
+    llm_provider_name: str = "deepseek"
+    llm_fallback_api_key: str | None = None
+    llm_fallback_model: str | None = None
+    llm_fallback_base_url: str | None = None
+    llm_fallback_provider_name: str = "fallback"
+    ai_pricing_json: str | None = None
+    ai_pricing_source_date: str | None = None
     max_tool_calls: int = Field(default=6, ge=1, le=20)
     final_output_retries: int = Field(default=1, ge=0, le=3)
     embedding_api_key: str | None = Field(
@@ -59,9 +70,28 @@ class Settings(BaseSettings):
             )
         if self.knowledge_chunk_overlap_tokens >= self.knowledge_chunk_max_tokens:
             raise ValueError(
-                "KNOWLEDGE_CHUNK_OVERLAP_TOKENS must be smaller than "
-                "KNOWLEDGE_CHUNK_MAX_TOKENS"
+                "KNOWLEDGE_CHUNK_OVERLAP_TOKENS must be smaller than KNOWLEDGE_CHUNK_MAX_TOKENS"
             )
+        fallback_values = (
+            self.llm_fallback_api_key,
+            self.llm_fallback_model,
+            self.llm_fallback_base_url,
+        )
+        if any(fallback_values) and not all(fallback_values):
+            raise ValueError(
+                "LLM fallback requires LLM_FALLBACK_API_KEY, LLM_FALLBACK_MODEL, "
+                "and LLM_FALLBACK_BASE_URL together"
+            )
+        if self.app_environment == "production":
+            if not self.supabase_url or not self.supabase_key:
+                raise ValueError("Production requires SUPABASE_URL and SUPABASE_KEY")
+            if "*" in self.allowed_origins:
+                raise ValueError("Production CORS_ORIGINS cannot contain a wildcard")
+            if not self.public_demo_mode and not self.allow_anonymous_production_writes:
+                raise ValueError(
+                    "Production requires PUBLIC_DEMO_MODE=true unless "
+                    "ALLOW_ANONYMOUS_PRODUCTION_WRITES=true is explicitly set"
+                )
         return self
 
     @property
@@ -93,6 +123,18 @@ class Settings(BaseSettings):
         if not self.llm_api_key:
             raise RuntimeError("Missing required LLM configuration: LLM_API_KEY")
         return self.llm_base_url.rstrip("/"), self.llm_api_key, self.llm_model
+
+    def optional_fallback_llm(self) -> tuple[str, str, str, str] | None:
+        if not self.llm_fallback_api_key:
+            return None
+        assert self.llm_fallback_model is not None
+        assert self.llm_fallback_base_url is not None
+        return (
+            self.llm_fallback_base_url.rstrip("/"),
+            self.llm_fallback_api_key,
+            self.llm_fallback_model,
+            self.llm_fallback_provider_name,
+        )
 
     def require_embedding(self) -> tuple[str, str, str, int]:
         if not self.embedding_api_key:

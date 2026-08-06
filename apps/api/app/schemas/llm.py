@@ -30,6 +30,13 @@ class ToolDefinition(BaseModel):
 class ModelTurn(BaseModel):
     content: str | None = None
     tool_calls: list[ModelToolCall] = Field(default_factory=list)
+    provider: str | None = None
+    model: str | None = None
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    total_tokens: int | None = Field(default=None, ge=0)
+    fallback_used: bool = False
+    fallback_reason: str | None = None
 
 
 class ProviderToolFunction(BaseModel):
@@ -52,7 +59,17 @@ class ProviderChoice(BaseModel):
     message: ProviderMessage
 
 
+class ProviderUsage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    prompt_tokens: int | None = Field(default=None, ge=0)
+    completion_tokens: int | None = Field(default=None, ge=0)
+    total_tokens: int | None = Field(default=None, ge=0)
+
+
 class ProviderResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     choices: list[ProviderChoice]
+    model: str | None = None
+    usage: ProviderUsage | None = None

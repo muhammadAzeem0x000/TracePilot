@@ -46,6 +46,7 @@ h2, h3, p { margin-top: 0; }
 .section-heading p { margin: 0; color: var(--muted); font-size: 0.9rem; }
 
 form { display: grid; gap: 18px; }
+.mutation-fieldset { border: 0; display: contents; margin: 0; padding: 0; }
 label { display: grid; gap: 7px; font-size: 0.82rem; font-weight: 700; }
 .optional { color: var(--muted); font-weight: 400; }
 input, textarea, select { width: 100%; border: 1px solid #aaa79f; background: white; color: var(--foreground); border-radius: 0; padding: 11px 12px; font: inherit; font-weight: 400; }

@@ -354,9 +354,7 @@ class MemoryJobRepository:
         )
 
     def _update(self, job_id: UUID, **updates: object) -> InvestigationJobResponse:
-        stored = self.items[job_id].model_copy(
-            update={**updates, "updated_at": datetime.now(UTC)}
-        )
+        stored = self.items[job_id].model_copy(update={**updates, "updated_at": datetime.now(UTC)})
         self.items[job_id] = stored
         return stored
 

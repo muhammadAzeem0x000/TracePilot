@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.ai.embeddings import EmbeddingProviderError
 from app.ai.provider import LLMProviderError
@@ -10,7 +10,9 @@ from app.api.dependencies import (
     IncidentServiceDependency,
     InvestigationServiceDependency,
     KnowledgeRetrievalServiceDependency,
+    MutationEnabledDependency,
 )
+from app.config.settings import Settings, get_settings
 from app.schemas.evidence import EvidenceListResponse
 from app.schemas.incident import (
     ErrorResponse,
@@ -18,6 +20,7 @@ from app.schemas.incident import (
     IncidentCreate,
     IncidentListResponse,
     IncidentResponse,
+    PublicConfigResponse,
     RepositoryFullName,
 )
 from app.schemas.investigation import (
@@ -28,6 +31,7 @@ from app.schemas.investigation import (
     InvestigationReviewResponse,
 )
 from app.schemas.knowledge import KnowledgeSearchMode, KnowledgeSearchResponse
+from app.schemas.operations import InvestigationMetricsResponse
 from app.services.incidents import IncidentNotFoundError
 from app.services.investigations import (
     InvestigationNotFoundError,
@@ -43,6 +47,16 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok", service="tracepilot-api", timestamp=datetime.now(UTC))
 
 
+@router.get("/api/v1/config", response_model=PublicConfigResponse, tags=["system"])
+def public_config(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> PublicConfigResponse:
+    return PublicConfigResponse(
+        public_demo_mode=settings.public_demo_mode,
+        mutations_enabled=not settings.public_demo_mode,
+    )
+
+
 @router.post(
     "/api/v1/incidents",
     response_model=IncidentResponse,
@@ -53,6 +67,7 @@ def health() -> HealthResponse:
 async def create_incident(
     incident: IncidentCreate,
     service: IncidentServiceDependency,
+    _mutations_enabled: MutationEnabledDependency,
 ) -> IncidentResponse:
     return await service.create(incident)
 
@@ -100,6 +115,7 @@ async def get_incident(
 async def run_investigation(
     incident_id: UUID,
     service: InvestigationServiceDependency,
+    _mutations_enabled: MutationEnabledDependency,
 ) -> InvestigationAcceptedResponse:
     try:
         return await service.enqueue(incident_id)
@@ -169,6 +185,25 @@ async def get_investigation(
         ) from exc
 
 
+@router.get(
+    "/api/v1/investigations/{investigation_id}/metrics",
+    response_model=InvestigationMetricsResponse,
+    responses={404: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+    tags=["investigations"],
+)
+async def get_investigation_metrics(
+    investigation_id: UUID,
+    service: InvestigationServiceDependency,
+) -> InvestigationMetricsResponse:
+    try:
+        return await service.metrics(investigation_id)
+    except InvestigationNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Investigation {investigation_id} was not found",
+        ) from exc
+
+
 @router.post(
     "/api/v1/investigations/{investigation_id}/review",
     response_model=InvestigationReviewResponse,
@@ -179,6 +214,7 @@ async def review_investigation(
     investigation_id: UUID,
     review: InvestigationReviewCreate,
     service: InvestigationServiceDependency,
+    _mutations_enabled: MutationEnabledDependency,
 ) -> InvestigationReviewResponse:
     try:
         return await service.review(investigation_id, review)

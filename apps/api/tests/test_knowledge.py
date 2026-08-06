@@ -338,9 +338,7 @@ def test_embedding_dimension_mismatch_prevents_storage() -> None:
 
 def test_embedding_provider_failure_prevents_storage() -> None:
     repository = MemoryKnowledgeRepository()
-    embeddings = FakeEmbeddingProvider(
-        failure=EmbeddingUnavailableError("provider unavailable")
-    )
+    embeddings = FakeEmbeddingProvider(failure=EmbeddingUnavailableError("provider unavailable"))
 
     with pytest.raises(EmbeddingUnavailableError):
         run_async(make_ingestion_service(repository, embeddings).ingest(make_document()))
@@ -415,9 +413,7 @@ def test_reranker_accepts_exact_known_candidate_set() -> None:
 def test_reranker_rejects_invented_candidate_id() -> None:
     row = make_row()
     candidate = from_row(row, semantic_rank=1)
-    llm = StaticRerankLLM(
-        RerankResult(ranked_candidate_ids=[uuid4()]).model_dump_json()
-    )
+    llm = StaticRerankLLM(RerankResult(ranked_candidate_ids=[uuid4()]).model_dump_json())
 
     with pytest.raises(RerankingValidationError, match="every known candidate"):
         run_async(KnowledgeReranker(llm).rerank("rollback", [candidate]))
@@ -502,9 +498,7 @@ def test_retrieved_knowledge_is_persisted_as_incident_investigation_evidence() -
     )
     context = ToolExecutionContext(uuid4(), uuid4(), REPOSITORY)
 
-    persisted = run_async(
-        executor.execute('{"query":"checkout rollback","top_k":1}', context)
-    )
+    persisted = run_async(executor.execute('{"query":"checkout rollback","top_k":1}', context))
 
     assert len(persisted) == 1
     stored = persisted[0]

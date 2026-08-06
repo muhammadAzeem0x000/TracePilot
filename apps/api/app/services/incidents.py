@@ -26,4 +26,3 @@ class IncidentService:
         if incident is None:
             raise IncidentNotFoundError(incident_id)
         return incident
-

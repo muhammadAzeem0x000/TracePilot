@@ -2,6 +2,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import ValidationError
@@ -9,10 +10,12 @@ from pydantic import ValidationError
 from app.ai.prompts.investigation_v2 import PROMPT_VERSION, SYSTEM_PROMPT, build_incident_prompt
 from app.ai.provider import LLMProvider
 from app.ai.tool_definitions import INVESTIGATION_TOOL_DEFINITIONS
+from app.observability.tracing import begin_trace, end_trace, operation_label, record_operation
 from app.repositories.evidence import EvidenceRepository
 from app.repositories.incidents import IncidentRepository
 from app.repositories.investigations import InvestigationRepository
 from app.repositories.jobs import InvestigationJobRepository
+from app.repositories.operations import AIOperationRepository, aggregate_investigation_metrics
 from app.repositories.reviews import InvestigationReviewRepository
 from app.schemas.evidence import EvidenceListResponse, EvidenceResponse
 from app.schemas.investigation import (
@@ -26,6 +29,11 @@ from app.schemas.investigation import (
     PreliminaryInvestigationResult,
 )
 from app.schemas.llm import ChatMessage, ModelTurn, ToolDefinition
+from app.schemas.operations import (
+    AIOperationStatus,
+    AIOperationType,
+    InvestigationMetricsResponse,
+)
 from app.services.incidents import IncidentNotFoundError
 from app.services.investigation_errors import (
     EvidenceReferenceValidationError,
@@ -85,6 +93,7 @@ class InvestigationService:
         final_output_retries: int = 1,
         max_job_attempts: int = 3,
         tool_definitions: list[ToolDefinition] | None = None,
+        operation_repository: AIOperationRepository | None = None,
     ) -> None:
         self._incidents = incident_repository
         self._investigations = investigation_repository
@@ -99,6 +108,7 @@ class InvestigationService:
         self._tool_definitions = (
             tool_definitions if tool_definitions is not None else INVESTIGATION_TOOL_DEFINITIONS
         )
+        self._operations = operation_repository
 
     async def enqueue(self, incident_id: UUID) -> InvestigationAcceptedResponse:
         incident = await self._incidents.get(incident_id)
@@ -134,7 +144,12 @@ class InvestigationService:
             await self.mark_failed(accepted.investigation_id, str(exc))
             raise InvestigationExecutionError(accepted.investigation_id, str(exc)) from exc
 
-    async def execute(self, investigation_id: UUID) -> InvestigationResponse:
+    async def execute(
+        self,
+        investigation_id: UUID,
+        job_id: UUID | None = None,
+        queued_at: datetime | None = None,
+    ) -> InvestigationResponse:
         investigation = await self._investigations.get(investigation_id)
         if investigation is None:
             raise PermanentInvestigationError("Investigation record no longer exists")
@@ -150,6 +165,17 @@ class InvestigationService:
             raise PermanentInvestigationError("Incident repository context is missing")
 
         started = time.perf_counter()
+        started_at = datetime.now(UTC)
+        trace_token = begin_trace(investigation.id, job_id) if self._operations else None
+        if self._operations and queued_at is not None:
+            queue_seconds = max(0.0, (started_at - queued_at).total_seconds())
+            await record_operation(
+                self._operations,
+                operation_type=AIOperationType.QUEUE_WAIT,
+                started_at=queued_at,
+                started_perf=time.perf_counter() - queue_seconds,
+                status=AIOperationStatus.SUCCEEDED,
+            )
         await self._set_progress(
             investigation.id,
             InvestigationStage.COLLECTING_EVIDENCE,
@@ -189,6 +215,17 @@ class InvestigationService:
                     "stage": InvestigationStage.COMPLETED.value,
                 },
             )
+            if self._operations:
+                await record_operation(
+                    self._operations,
+                    operation_type=AIOperationType.INVESTIGATION,
+                    started_at=started_at,
+                    started_perf=started,
+                    status=AIOperationStatus.SUCCEEDED,
+                    prompt_version=PROMPT_VERSION,
+                    model=self._llm.model_name,
+                    metadata={"tool_call_count": outcome.tool_call_count},
+                )
             return await self._attach_review(completed)
         except Exception as exc:
             classified = classify_investigation_error(exc)
@@ -200,7 +237,21 @@ class InvestigationService:
                     "duration_ms": round((time.perf_counter() - started) * 1_000),
                 },
             )
+            if self._operations:
+                await record_operation(
+                    self._operations,
+                    operation_type=AIOperationType.INVESTIGATION,
+                    started_at=started_at,
+                    started_perf=started,
+                    status=AIOperationStatus.FAILED,
+                    prompt_version=PROMPT_VERSION,
+                    model=self._llm.model_name,
+                    error_type=type(classified).__name__,
+                )
             raise classified from exc
+        finally:
+            if trace_token is not None:
+                end_trace(trace_token)
 
     async def list_for_incident(self, incident_id: UUID) -> InvestigationListResponse:
         incident = await self._incidents.get(incident_id)
@@ -215,6 +266,15 @@ class InvestigationService:
         if investigation is None:
             raise InvestigationNotFoundError(investigation_id)
         return await self._attach_review(investigation)
+
+    async def metrics(self, investigation_id: UUID) -> InvestigationMetricsResponse:
+        investigation = await self._investigations.get(investigation_id)
+        if investigation is None:
+            raise InvestigationNotFoundError(investigation_id)
+        if self._operations is None:
+            return aggregate_investigation_metrics(investigation_id, [])
+        operations = await self._operations.list_for_investigation(investigation_id)
+        return aggregate_investigation_metrics(investigation_id, operations)
 
     async def list_evidence(self, incident_id: UUID) -> EvidenceListResponse:
         incident = await self._incidents.get(incident_id)
@@ -276,7 +336,8 @@ class InvestigationService:
                     "stage": InvestigationStage.REASONING.value,
                 },
             )
-            turn = await self._llm.complete(messages, self._tool_definitions)
+            async with operation_label(AIOperationType.LLM_CALL, PROMPT_VERSION):
+                turn = await self._llm.complete(messages, self._tool_definitions)
             if turn.tool_calls:
                 if tool_call_count + len(turn.tool_calls) > self._max_tool_calls:
                     raise ToolCallLimitError(

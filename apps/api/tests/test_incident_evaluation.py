@@ -57,9 +57,7 @@ class EvidenceGroundedEvaluationLLM:
             for message in tool_messages
             for item in json.loads(message.content or "{}")["evidence"]
         ]
-        culprit = next(
-            item for item in evidence if item["source_type"] == "github_commit"
-        )
+        culprit = next(item for item in evidence if item["source_type"] == "github_commit")
         return ModelTurn(
             content=json.dumps(
                 {
@@ -84,8 +82,7 @@ def test_fixed_incident_dataset_is_transparent_and_has_ten_scenarios() -> None:
         scenario.expected_culprit_id not in scenario.incident.title for scenario in scenarios
     )
     assert all(
-        scenario.expected_culprit_id
-        in {item.source_reference for item in scenario.evidence}
+        scenario.expected_culprit_id in {item.source_reference for item in scenario.evidence}
         for scenario in scenarios
     )
 
