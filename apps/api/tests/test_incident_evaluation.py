@@ -25,6 +25,7 @@ def load_scenarios() -> list[IncidentEvaluationScenario]:
 
 
 class EvidenceGroundedEvaluationLLM:
+    provider_name = "deterministic-test"
     model_name = "deterministic-test-model"
 
     def __init__(self) -> None:

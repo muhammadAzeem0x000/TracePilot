@@ -4,9 +4,10 @@ TracePilot is a five-day applied AI engineering project exploring how an inciden
 can use model-generated hypotheses without confusing them with inspectable evidence. It is
 learning/project software, not a production incident-response platform.
 
-Day 4 moves investigations onto a durable PostgreSQL queue and adds a fixed end-to-end diagnosis
-benchmark. GitHub results and retrieved knowledge chunks remain persisted as Evidence before the
-LLM can cite them.
+Day 5 completes the portfolio build with provider-neutral AI operation telemetry, an adversarial
+security suite, a frozen unseen holdout, a read-only public-demo posture, a hardened backend image,
+and CI. GitHub results and retrieved knowledge chunks still become Evidence before the LLM can cite
+them.
 
 ## Current capabilities
 
@@ -27,9 +28,18 @@ LLM can cite them.
 - Evaluate full diagnosis quality against ten fixed incidents and controlled Evidence fixtures.
 - Store an accept/reject human review separately without rewriting the AI conclusion.
 - Display collected GitHub/knowledge Evidence separately from the AI preliminary hypothesis.
+- Persist safe operation metadata for queue, investigation, LLM, tool, embedding, retrieval, and
+  rerank spans, then expose a typed per-investigation aggregate.
+- Record provider-reported token usage; estimate cost only when an explicitly dated pricing registry
+  is configured.
+- Optionally fall back to a second chat provider only for rate-limit or availability failures.
+- Run in a server-enforced read-only public-demo mode that disables and hides browser mutations.
+- Exercise 13 deterministic prompt-injection, authority, argument, and citation attacks.
+- Build a non-root Python 3.12 container and run backend, frontend, and image checks in GitHub Actions.
 
 There is no LangChain, LangGraph, Redis, external queue, multi-agent architecture, file-upload
-pipeline, PDF parsing, or GitHub mutation capability.
+pipeline, PDF parsing, or GitHub mutation capability. Anonymous public mutation remains deliberately
+disabled because authentication and tenant authorization are not part of this five-day build.
 
 ## Architecture
 
@@ -45,7 +55,8 @@ Incident -> atomic PostgreSQL enqueue -> HTTP 202
          -> semantic + lexical retrieval -> RRF -> optional validated rerank
          -> bounded chunks persisted as Evidence -> returned to LLM
          -> Pydantic conclusion + database-backed citation ownership check
-         -> terminal job/investigation state -> browser polling + separate human review
+         -> terminal job/investigation state + safe operation spans
+         -> browser polling + separate Evidence, hypothesis, review, and developer metrics
 ```
 
 The browser never receives `SUPABASE_KEY`, `GITHUB_TOKEN`, `LLM_API_KEY`, or an embedding key,
@@ -57,7 +68,7 @@ and it never writes business data directly to Supabase. See
 
 - Node.js 20.9+ (verified with Node.js 24)
 - Python 3.12+
-- Supabase PostgreSQL with the seven migrations below
+- Supabase PostgreSQL with the nine migrations below
 - A server-only Supabase service-role/secret key
 - A least-privilege GitHub token for investigation repositories
 - An OpenAI-compatible chat model with tool calling and JSON output support
@@ -87,6 +98,8 @@ Fill `.env`; it is ignored by Git. Apply migrations in order:
 5. `supabase/migrations/202608060002_day3_fix_knowledge_replacement.sql`
 6. `supabase/migrations/20260806084343_day4_async_investigations.sql`
 7. `supabase/migrations/20260806093000_day4_server_timestamps.sql`
+8. `supabase/migrations/20260806113455_day5_ai_observability.sql`
+9. `supabase/migrations/20260806114918_day5_limit_ai_operation_privileges.sql`
 
 ## Ingest and inspect knowledge
 
@@ -164,6 +177,44 @@ two, and permanent failure on attempt one. The real HTTP flow returned `202` in 
 completed in 46,031 ms after four tools and 17 persisted Evidence rows. Browser polling showed the
 active stage and completed with no console warnings/errors.
 
+## Measured Day 5 results
+
+The official seven-scenario holdout was authored, hashed, and committed before exactly one live
+DeepSeek run. Its dataset SHA-256 is
+`050202b3accc99bc2fdafe0520a54739fc26882c08ab6ffb0e7571acb379fc31`; neither the cases nor the
+production prompt/tool budget was changed after freezing.
+
+| Holdout metric | Result |
+| --- | ---: |
+| Completion / culprit accuracy | 1.000 / 1.000 |
+| Citation precision / recall | 1.000 / 1.000 |
+| Invalid citation rate | 0.000 |
+| Average tools / latency | 4.43 / 10,335.0 ms |
+| Average provider-reported tokens | 6,733.7 |
+| Average model confidence | 0.607 |
+| High-confidence incorrect diagnoses | 0 |
+| Fallback scenarios | 0 |
+| Estimated cost | n/a (pricing registry intentionally unconfigured) |
+
+This is a small synthetic fixture-based holdout, not a claim of real-world accuracy or calibrated
+confidence. The [frozen manifest](evaluation/incident_holdout_manifest.json),
+[aggregate/per-case report](docs/evaluation/holdout_evaluation.md), and
+[raw result](docs/evaluation/holdout_evaluation.json) preserve the one official run.
+
+The deterministic adversarial suite blocked all 13/13 expected attacks with zero forbidden tool
+executions, cross-repository access, invalid citations, or unsafe mutations. A separate real trace
+completed investigation `ecc6f4e5-8273-4169-a5c4-a394d16abc00`: 12 operation rows covered all seven
+operation types, 18 Evidence rows included five knowledge items, all three final citations were
+owned by the investigation, and provider-reported usage totaled 20,876 tokens. End-to-end latency
+was 41,748 ms; LLM calls used 20,935 ms, GitHub tools 7,414 ms, knowledge retrieval 6,263 ms,
+embedding 711 ms, and reranking 2,381 ms. Cost stayed null because no dated pricing source was set.
+
+The 711 ms query embedding was only about 1.7% of that trace, while provider/tool I/O dominated.
+TracePilot therefore adds no speculative cache on Day 5; caching incident conclusions would also
+risk stale evidence. Idempotent corpus ingestion already avoids recomputing unchanged document
+embeddings. See [the live trace](docs/evaluation/day5_live_trace.json) and
+[verification record](docs/evaluation/day5_verification.md).
+
 ## Run
 
 Backend, from `apps/api` with the virtual environment active:
@@ -194,6 +245,7 @@ Open `http://localhost:3000`. API health, OpenAPI, and the developer retrieval e
 npm run lint:web
 npm run typecheck:web
 npm run build:web
+docker build --file apps/api/Dockerfile --tag tracepilot-api:day5 .
 ```
 
 Ordinary tests use typed in-memory doubles and make no Supabase, GitHub, embedding, or LLM calls.
@@ -211,7 +263,12 @@ $env:PYTHONPATH="apps/api"
 
 .\.venv\Scripts\python.exe apps\api\scripts\evaluate_incidents.py `
   --benchmark evaluation\incident_benchmark.json --output-dir docs\evaluation
+
+.\.venv\Scripts\python.exe apps\api\scripts\evaluate_security.py
 ```
+
+The frozen Day-5 holdout is a preserved one-run evaluation artifact. Do not rerun it as an ordinary
+quality gate or tune against it.
 
 ## Environment variables
 
@@ -244,14 +301,37 @@ $env:PYTHONPATH="apps/api"
 | `INVESTIGATION_RETRY_BASE_SECONDS` | no | worker | Default `5`; exponential backoff base |
 | `CORS_ORIGINS` | no | FastAPI | Default `http://localhost:3000` |
 | `NEXT_PUBLIC_API_URL` | no | browser | Default `http://localhost:8000` |
+| `APP_ENVIRONMENT` | no | FastAPI | `production` activates strict deployment validation |
+| `PUBLIC_DEMO_MODE` | no | FastAPI/browser | Server-enforced anonymous read-only mode |
+| `ALLOW_ANONYMOUS_PRODUCTION_WRITES` | no | FastAPI | Explicit escape hatch; keep `false` publicly |
+| `LLM_PROVIDER_NAME` | no | telemetry | Stable primary provider label |
+| `LLM_FALLBACK_*` | no | FastAPI | Complete optional fallback provider configuration |
+| `LLM_FALLBACK_PROVIDER_NAME` | no | telemetry | Stable fallback provider label |
+| `AI_PRICING_JSON` | no | FastAPI | Trusted per-model input/output USD per million tokens |
+| `AI_PRICING_SOURCE_DATE` | with pricing | FastAPI | Required provenance date for cost estimates |
 
 Never prefix server secrets with `NEXT_PUBLIC_`. Authentication and tenant authorization remain
 absent, so do not expose this service publicly.
 
+## Known limitations
+
+- All evaluation incidents and knowledge documents are fictional and small; benchmark scores do not
+  estimate general production accuracy, scale, or model-confidence calibration.
+- Authentication, tenant authorization, data-retention policy, and a mutation-enabled public mode
+  are absent. The safe public posture is read-only.
+- The lifespan worker is suitable for one processing instance. A larger deployment needs explicit
+  API/worker topology, capacity planning, and operational alerting.
+- Provider availability, latency, data governance, and token pricing remain external concerns. Cost
+  is null until a trusted dated pricing registry is configured.
+- No public URL exists: Vercel authentication worked, but backend host authorization was unavailable,
+  so a broken frontend-only deployment was deliberately avoided.
+
 ## Roadmap
 
-- **Days 1-3:** implemented foundation, evidence-grounded GitHub investigation, and evaluated RAG.
-- **Day 4:** implemented durable execution, progress/review UI, and fixed diagnosis evaluation.
-- **Day 5:** security hardening, deployment readiness, and end-to-end delivery.
+- **Day 1:** typed Next.js/FastAPI/Supabase incident foundation.
+- **Day 2:** allowlisted read-only GitHub evidence and validated preliminary conclusions.
+- **Day 3:** pgvector/lexical/RRF retrieval, reranking, RAG Evidence, and retrieval evaluation.
+- **Day 4:** durable leased execution, progress/review UI, and development diagnosis evaluation.
+- **Day 5:** telemetry, security evaluation, frozen holdout, public-demo controls, Docker, and CI.
 
 Future directions are not current capabilities.

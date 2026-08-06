@@ -1,4 +1,4 @@
-# TracePilot Engineering Notes - Day 4
+# TracePilot Engineering Notes - five-day build
 
 These notes refer to concrete code and failures in this repository.
 
@@ -175,3 +175,58 @@ model claim; the deterministic culprit and citation checks are the correctness m
 The browser can accept or reject a completed Investigation, but `investigation_reviews` is separate
 from model output. Live API verification accepted and then rejected the same conclusion and confirmed
 the summary, confidence, suspected change, and citation IDs were byte-for-byte unchanged.
+
+## Tracing must preserve causality without preserving sensitive content
+
+`app/observability/tracing.py` propagates trace/span context through the worker, provider, GitHub,
+embedding, retrieval, and rerank boundaries. `OperationCreate` deliberately has no prompt or response
+field. The real trace still answers where 41.7 seconds went and which providers ran, while a database
+reader cannot recover incident text from telemetry.
+
+## Provider token usage and model identity are observations, not configuration
+
+The configured alias was `deepseek-chat`, while live provider responses identified
+`deepseek-v4-flash`. `app/ai/provider.py` records both rather than overwriting one. The same responses
+reported 20,876 tokens for the final live trace. Because no dated price registry was configured,
+`estimated_cost_usd` correctly stayed null.
+
+## Fallback must not hide an authority or validation defect
+
+`FallbackLLMProvider` catches only `LLMRateLimitError` and `LLMUnavailableError`. Tests prove auth
+and validation errors return directly. A broad `except` here would make security failures harder to
+diagnose and could send sensitive context to an unintended provider.
+
+## Cross-system clocks fail at surprisingly small skew
+
+Day 4 moved durable job timestamps to PostgreSQL, but the first Day-5 trace still derived queue start
+from a local wall clock. Supabase was about two seconds ahead, violating `ended_at >= started_at`.
+`clamp_queue_started_at` now bounds the local estimate by the database-created timestamp; a regression
+test captures the exact skew case.
+
+## Native optional packages matter in a Linux frontend build
+
+The Windows Next.js build passed while the first Linux container build could not resolve
+`lightningcss`, then Tailwind's oxide binary. Root optional dependencies now lock the Linux glibc
+artifacts and Next.js SWC variants. The rebuilt Linux production frontend compiled and type-checked;
+this was a portability defect, not an application-code failure.
+
+## A security evaluation should count forbidden side effects
+
+`app/security/evaluation.py` uses production Pydantic tool/citation validators against 13 fixed
+attacks. The primary metric is not an LLM's opinion: forbidden tool executions, cross-repository
+access, invalid citations, and unsafe mutations must each remain zero. Prompt-injection strings are
+treated as data, and no HTML bypass exists in the browser.
+
+## Holdout discipline is part of the implementation
+
+`incident_holdout_manifest.json` hashes the seven cases, prompt, rerank prompt, tool definitions, and
+tool-call limits. The only official run completed 7/7 with perfect fixture-based culprit/citation
+scores, but that result does not calibrate confidence or estimate production accuracy. Preserving the
+cases and per-scenario output is more useful than rerunning until a preferred number appears.
+
+## Measure before caching
+
+The query embedding consumed 711 ms, about 1.7% of a 41,748 ms trace. Chat and GitHub I/O dominated.
+Adding cache keys, expiry, and stale-evidence semantics would create more correctness risk than the
+measured latency benefit. The one existing cache-like optimization—content hashes that skip unchanged
+corpus ingestion—has clear identity and invalidation rules.

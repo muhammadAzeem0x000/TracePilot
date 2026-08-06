@@ -192,6 +192,7 @@ class MemoryEvidenceRepository:
 
 
 class StaticRerankLLM:
+    provider_name = "test"
     model_name = "test-reranker"
 
     def __init__(self, content: str | None = None, *, fail: bool = False) -> None:

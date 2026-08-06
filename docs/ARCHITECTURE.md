@@ -1,4 +1,4 @@
-# TracePilot Architecture - Day 4
+# TracePilot Architecture - Final five-day build
 
 TracePilot remains one Next.js app, one FastAPI service, and one Supabase PostgreSQL database.
 Day 4 places the existing deterministic investigation loop behind a durable PostgreSQL queue and
@@ -160,3 +160,60 @@ owns the model call; the lifespan-managed worker does. Semantic and lexical
 database calls run concurrently in hybrid modes. Hashing, deterministic chunking, RRF, Pydantic
 validation, context selection, and evidence/citation set comparisons remain synchronous because
 making CPU-local transformations async would add complexity without concurrency benefit.
+
+## Day 5 operation telemetry
+
+`ai_operations` stores provider-neutral spans linked by trace, span, and optional parent IDs. The
+worker and provider/tool boundaries record status, start/end time, duration, provider/model,
+prompt/tool identifier, provider-reported token counts, fallback metadata, and bounded diagnostic
+metadata. It never stores prompts, GitHub bodies, knowledge text, provider keys, or raw responses.
+
+```text
+queue_wait -> investigation
+                  +-> llm_call
+                  +-> github_tool
+                  +-> knowledge_retrieval
+                         +-> embedding
+                         +-> rerank
+```
+
+`GET /api/v1/investigations/{id}/metrics` aggregates only rows for that Investigation. Failed spans
+are retained with a stable error class. A telemetry write failure is logged but cannot falsify the
+investigation result; the normal Evidence/citation state remains authoritative.
+
+Token counts come only from provider response usage. Cost remains `null` unless both
+`AI_PRICING_JSON` and `AI_PRICING_SOURCE_DATE` provide explicit provenance. The optional fallback is
+attempted only for rate-limit or provider-unavailable failures; authentication, validation,
+authority, and malformed-output failures never cross providers.
+
+## Public demo boundary
+
+With `PUBLIC_DEMO_MODE=true`, FastAPI rejects incident creation, investigation enqueue, and human
+review with HTTP 403. The frontend reads `/api/v1/config`, shows a read-only banner, disables the
+incident form, and hides investigation/review mutations. This is defense in depth: browser controls
+are presentation, while the API is the authority. Reads still pass through FastAPI; no client talks
+directly to Supabase.
+
+Production startup rejects wildcard/non-HTTPS CORS, a missing public-demo guard, or an invalid
+anonymous-write combination. Authentication is still absent, so a public deployment must remain
+read-only.
+
+## Final live trace (2026-08-06)
+
+Investigation `ecc6f4e5-8273-4169-a5c4-a394d16abc00` completed in 41,748 ms with 12 stored operation
+rows spanning queue wait, investigation, three LLM calls, four GitHub tools, embedding, knowledge
+retrieval, and rerank. It persisted 18 Evidence rows, including five knowledge chunks, before the
+model cited three owned knowledge UUIDs. Usage was 18,759 input and 2,117 output tokens; cost stayed
+unknown because pricing was not configured and no fallback ran.
+
+The database clock was about two seconds ahead of the worker during the first live attempt. Queue
+telemetry now clamps the local queue-start estimate to the database-created timestamp, preserving
+the operation time constraint without pretending clocks are synchronized.
+
+## Delivery shape
+
+The backend Docker image pins Python dependencies, runs as the unprivileged `tracepilot` user, has a
+`/health` health check, and starts one Uvicorn worker. PostgreSQL is the durable queue, but the
+lifespan worker is process-local, so horizontal replicas need a dedicated worker deployment or
+worker-disabled API replicas. GitHub Actions runs Ruff, strict mypy, pytest, ESLint, TypeScript,
+Next.js production build, and the backend image build without live secrets.

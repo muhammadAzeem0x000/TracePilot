@@ -213,3 +213,69 @@ Live Supabase testing found enough host/database clock skew for a client complet
 precede the database start timestamp. Triggers now stamp terminal transitions and the retry RPC
 computes eligibility with PostgreSQL's clock. Durable ordering no longer assumes synchronized worker
 clocks; application timers remain suitable only for local latency measurement.
+
+## ADR-025: Internal provider-neutral operation telemetry
+
+**Status:** Accepted on Day 5
+
+TracePilot persists its own typed spans instead of adding a hosted observability platform. This
+keeps evidence, jobs, and measurements in one database and makes provider replacement possible
+without changing the UI contract. The trade-off is fewer visualization and sampling features.
+Telemetry contains identifiers, timing, counts, status, and bounded metadata only; raw prompts,
+evidence bodies, and secrets are excluded.
+
+## ADR-026: Provider usage is trusted narrowly; pricing must be explicit
+
+**Status:** Accepted on Day 5
+
+Token counts are recorded only when a provider returns them. TracePilot does not estimate missing
+tokens and does not silently substitute a model price. A cost is calculated only from a configured
+model entry plus a dated pricing source. This leaves honest `null` values in the live run, but avoids
+presenting invented precision as engineering evidence.
+
+## ADR-027: Fallback is conditional, observable, and bounded
+
+**Status:** Accepted on Day 5
+
+An optional secondary provider receives one attempt only after a rate-limit or unavailable-provider
+error. Authentication, permission, schema, citation, tool, and other validation failures are not
+fallback candidates. Every switch records the provider/model and reason. Availability improves
+without turning deterministic defects into hidden cross-provider retries.
+
+## ADR-028: Anonymous public demos are read-only at the API
+
+**Status:** Accepted on Day 5
+
+Authentication and tenant authorization were intentionally out of scope. Public demo mode therefore
+rejects all three business mutations server-side while the UI disables/hides the same actions. A
+read-only portfolio can display real persisted artifacts without granting anonymous users access to
+paid model calls, GitHub scope, or human-review writes.
+
+## ADR-029: Freeze the final holdout before one official run
+
+**Status:** Accepted on Day 5
+
+Seven unseen fictional scenarios, the production prompt, tool definitions, and tool budget were
+hashed and committed before the only official run. Results retain every scenario, including
+failures. The set is deliberately separate from the Day-4 development benchmark so prompt tuning
+cannot leak into the claimed final evaluation. Seven synthetic fixtures remain too small for a
+general accuracy claim.
+
+## ADR-030: Do not add a speculative investigation cache
+
+**Status:** Accepted on Day 5 after measurement
+
+The live trace spent 20,935 ms in chat calls and 7,414 ms in GitHub tools; query embedding was only
+711 ms of 41,748 ms. Caching conclusions risks stale incident evidence, while caching mutable GitHub
+lists needs invalidation policy not justified by this workload. Existing content-hash ingestion
+already skips unchanged document embeddings. Future immutable commit-detail or content-addressed
+embedding caches require workload evidence first.
+
+## ADR-031: Ship a non-root image and CI, but avoid a broken partial deployment
+
+**Status:** Accepted on Day 5
+
+The API has a pinned Python 3.12 image and the repository has secret-free CI for both applications.
+Vercel authentication was available during verification, but Koyeb/backend credentials were not.
+Deploying the frontend with no reachable API would misrepresent the system, so no partial production
+URL was created. Deployment remains an explicit environment operation documented in `DEPLOYMENT.md`.

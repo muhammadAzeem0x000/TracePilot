@@ -489,6 +489,7 @@ class FakeGitHubClient:
 
 
 class ToolThenConclusionLLM:
+    provider_name = "test"
     model_name = "test-model"
 
     def __init__(
@@ -548,6 +549,7 @@ class ToolThenConclusionLLM:
 
 
 class FailingLLM:
+    provider_name = "test"
     model_name = "test-model"
 
     async def complete(
@@ -559,6 +561,7 @@ class FailingLLM:
 
 
 class LoopingLLM:
+    provider_name = "test"
     model_name = "test-model"
 
     async def complete(

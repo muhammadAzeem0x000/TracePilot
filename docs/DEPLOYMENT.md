@@ -33,3 +33,13 @@ Deploy the repository with `apps/api/Dockerfile`, repository-root build context,
 ## Rollback
 
 Roll back the application image independently. Database migrations are forward-only; do not drop telemetry or investigation data as part of an application rollback. If an incompatible database fix is needed, add a corrective migration.
+
+## Verification and current deployment status
+
+On 2026-08-06 the image built with Python 3.12.11, ran as the unprivileged `tracepilot` user, became
+healthy, returned `/health`, and read real Supabase incidents. The production frontend also built in
+a Linux container after native optional dependencies were locked.
+
+Vercel CLI authentication was available, but no Koyeb CLI profile/token or backend credential was
+present. TracePilot was therefore not partially deployed: a frontend with no reachable API would be
+a broken and misleading demo. There is currently no public URL and no Day-5 push was performed.

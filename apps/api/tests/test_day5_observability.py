@@ -179,7 +179,7 @@ def test_metrics_aggregate_provider_usage_without_double_counting_unknowns() -> 
 
 def test_production_configuration_rejects_wildcard_and_unprotected_writes() -> None:
     with pytest.raises(ValidationError, match="wildcard"):
-        Settings(
+        Settings(  # type: ignore[call-arg]  # pydantic-settings runtime init option
             _env_file=None,
             app_environment="production",
             public_demo_mode=True,
@@ -188,7 +188,7 @@ def test_production_configuration_rejects_wildcard_and_unprotected_writes() -> N
             cors_origins="*",
         )
     with pytest.raises(ValidationError, match="PUBLIC_DEMO_MODE"):
-        Settings(
+        Settings(  # type: ignore[call-arg]  # pydantic-settings runtime init option
             _env_file=None,
             app_environment="production",
             supabase_url="https://example.supabase.co",
@@ -204,7 +204,10 @@ def test_public_demo_blocks_create_incident_server_side() -> None:
         return repository
 
     def override_settings() -> Settings:
-        return Settings(_env_file=None, public_demo_mode=True)
+        return Settings(  # type: ignore[call-arg]  # pydantic-settings runtime init option
+            _env_file=None,
+            public_demo_mode=True,
+        )
 
     app.dependency_overrides[get_incident_repository] = override_repository
     app.dependency_overrides[get_settings] = override_settings
