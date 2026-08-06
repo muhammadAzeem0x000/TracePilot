@@ -1,0 +1,17 @@
+{
+  "verified_at": "2026-08-06T09:32:34.882347+00:00",
+  "repository": "muhammadAzeem0x000/TracePilot",
+  "idempotent_enqueue": true,
+  "concurrent_claim_count": 1,
+  "stale_lease_reclaimed": true,
+  "stale_lease_attempt_count": 2,
+  "retry_scheduled": true,
+  "retry_backoff_seconds": 1,
+  "retry_exhausted_at_attempt": 2,
+  "permanent_failure_attempt_count": 1,
+  "investigation_ids": {
+    "contention": "6a3d5798-328d-4979-9562-f9e52babf632",
+    "retry": "e6fa8e32-0350-492a-97a3-9b400cc60a9c",
+    "permanent": "616e1df7-eeb5-4e9b-a056-6b059533c3f8"
+  }
+}

@@ -1,0 +1,276 @@
+{
+  "prompt_version": "investigation_v2",
+  "model_name": "deepseek-chat",
+  "high_confidence_threshold": 0.7,
+  "metrics": {
+    "scenario_count": 10,
+    "completed_count": 10,
+    "failed_count": 0,
+    "completion_rate": 1.0,
+    "culprit_accuracy": 1.0,
+    "citation_precision": 1.0,
+    "citation_recall": 1.0,
+    "invalid_citation_rate": 0.0,
+    "average_tool_calls": 4.2,
+    "average_latency_ms": 7896.492180000222,
+    "average_confidence": 0.615,
+    "average_confidence_correct": 0.615,
+    "average_confidence_incorrect": null,
+    "high_confidence_incorrect_count": 0
+  },
+  "scenarios": [
+    {
+      "scenario_id": "checkout_schema_gap",
+      "completed": true,
+      "expected_culprit_id": "tracepilot/evaluation-fixtures@1111111111111111111111111111111111111111",
+      "predicted_culprit_id": "tracepilot/evaluation-fixtures@1111111111111111111111111111111111111111",
+      "culprit_correct": true,
+      "cited_source_references": [
+        "tracepilot/evaluation-fixtures@1111111111111111111111111111111111111111",
+        "knowledge/runbooks/database-migrations.md#chunk-eval-1"
+      ],
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "invalid_citation": false,
+      "confidence": 0.6,
+      "tool_calls": 4,
+      "called_tools": [
+        "list_recent_commits",
+        "list_recent_pull_requests",
+        "search_knowledge",
+        "get_commit"
+      ],
+      "latency_ms": 9025.393400000212,
+      "failure_class": null,
+      "failure_reason": null
+    },
+    {
+      "scenario_id": "refund_duplicate_execution",
+      "completed": true,
+      "expected_culprit_id": "tracepilot/evaluation-fixtures@2222222222222222222222222222222222222222",
+      "predicted_culprit_id": "tracepilot/evaluation-fixtures@2222222222222222222222222222222222222222",
+      "culprit_correct": true,
+      "cited_source_references": [
+        "tracepilot/evaluation-fixtures@2222222222222222222222222222222222222222",
+        "knowledge/past_incidents/duplicate-refund-jobs.md#chunk-eval-2"
+      ],
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "invalid_citation": false,
+      "confidence": 0.6,
+      "tool_calls": 4,
+      "called_tools": [
+        "list_recent_commits",
+        "list_recent_pull_requests",
+        "search_knowledge",
+        "get_commit"
+      ],
+      "latency_ms": 7730.555399999503,
+      "failure_class": null,
+      "failure_reason": null
+    },
+    {
+      "scenario_id": "catalog_latency_fanout",
+      "completed": true,
+      "expected_culprit_id": "tracepilot/evaluation-fixtures#303",
+      "predicted_culprit_id": "tracepilot/evaluation-fixtures#303",
+      "culprit_correct": true,
+      "cited_source_references": [
+        "tracepilot/evaluation-fixtures#303",
+        "knowledge/past_incidents/catalog-n-plus-one.md#chunk-eval-3"
+      ],
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "invalid_citation": false,
+      "confidence": 0.6,
+      "tool_calls": 4,
+      "called_tools": [
+        "list_recent_commits",
+        "list_recent_pull_requests",
+        "search_knowledge",
+        "get_pull_request_files"
+      ],
+      "latency_ms": 7792.191900000034,
+      "failure_class": null,
+      "failure_reason": null
+    },
+    {
+      "scenario_id": "auth_environment_mismatch",
+      "completed": true,
+      "expected_culprit_id": "tracepilot/evaluation-fixtures@4444444444444444444444444444444444444444",
+      "predicted_culprit_id": "tracepilot/evaluation-fixtures@4444444444444444444444444444444444444444",
+      "culprit_correct": true,
+      "cited_source_references": [
+        "tracepilot/evaluation-fixtures@4444444444444444444444444444444444444444",
+        "knowledge/runbooks/authentication-configuration.md#chunk-eval-4",
+        "knowledge/runbooks/authentication-configuration.md#chunk-eval-4"
+      ],
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "invalid_citation": false,
+      "confidence": 0.55,
+      "tool_calls": 5,
+      "called_tools": [
+        "list_recent_commits",
+        "list_recent_pull_requests",
+        "search_knowledge",
+        "get_commit",
+        "search_knowledge"
+      ],
+      "latency_ms": 8374.140400000215,
+      "failure_class": null,
+      "failure_reason": null
+    },
+    {
+      "scenario_id": "payment_retry_storm",
+      "completed": true,
+      "expected_culprit_id": "tracepilot/evaluation-fixtures#505",
+      "predicted_culprit_id": "tracepilot/evaluation-fixtures#505",
+      "culprit_correct": true,
+      "cited_source_references": [
+        "tracepilot/evaluation-fixtures#505",
+        "knowledge/runbooks/external-api-timeouts.md#chunk-eval-5"
+      ],
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "invalid_citation": false,
+      "confidence": 0.7,
+      "tool_calls": 4,
+      "called_tools": [
+        "list_recent_commits",
+        "list_recent_pull_requests",
+        "search_knowledge",
+        "get_pull_request_files"
+      ],
+      "latency_ms": 8429.297000000588,
+      "failure_class": null,
+      "failure_reason": null
+    },
+    {
+      "scenario_id": "tenant_scope_regression",
+      "completed": true,
+      "expected_culprit_id": "tracepilot/evaluation-fixtures@6666666666666666666666666666666666666666",
+      "predicted_culprit_id": "tracepilot/evaluation-fixtures@6666666666666666666666666666666666666666",
+      "culprit_correct": true,
+      "cited_source_references": [
+        "tracepilot/evaluation-fixtures@6666666666666666666666666666666666666666",
+        "knowledge/architecture/tenant-authorization.md#chunk-eval-6"
+      ],
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "invalid_citation": false,
+      "confidence": 0.7,
+      "tool_calls": 4,
+      "called_tools": [
+        "list_recent_commits",
+        "list_recent_pull_requests",
+        "search_knowledge",
+        "get_commit"
+      ],
+      "latency_ms": 9064.460000000508,
+      "failure_class": null,
+      "failure_reason": null
+    },
+    {
+      "scenario_id": "deployment_port_regression",
+      "completed": true,
+      "expected_culprit_id": "tracepilot/evaluation-fixtures@7777777777777777777777777777777777777777",
+      "predicted_culprit_id": "tracepilot/evaluation-fixtures@7777777777777777777777777777777777777777",
+      "culprit_correct": true,
+      "cited_source_references": [
+        "tracepilot/evaluation-fixtures@7777777777777777777777777777777777777777",
+        "knowledge/runbooks/deployment-rollback.md#chunk-eval-7"
+      ],
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "invalid_citation": false,
+      "confidence": 0.6,
+      "tool_calls": 4,
+      "called_tools": [
+        "list_recent_commits",
+        "list_recent_pull_requests",
+        "search_knowledge",
+        "get_commit"
+      ],
+      "latency_ms": 6681.224100000691,
+      "failure_class": null,
+      "failure_reason": null
+    },
+    {
+      "scenario_id": "attachment_limit_regression",
+      "completed": true,
+      "expected_culprit_id": "tracepilot/evaluation-fixtures#808",
+      "predicted_culprit_id": "tracepilot/evaluation-fixtures#808",
+      "culprit_correct": true,
+      "cited_source_references": [
+        "tracepilot/evaluation-fixtures#808",
+        "knowledge/architecture/upload-validation.md#chunk-eval-8"
+      ],
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "invalid_citation": false,
+      "confidence": 0.6,
+      "tool_calls": 5,
+      "called_tools": [
+        "list_recent_commits",
+        "list_recent_pull_requests",
+        "search_knowledge",
+        "get_pull_request",
+        "get_pull_request_files"
+      ],
+      "latency_ms": 7769.54300000034,
+      "failure_class": null,
+      "failure_reason": null
+    },
+    {
+      "scenario_id": "rate_limit_window_mismatch",
+      "completed": true,
+      "expected_culprit_id": "tracepilot/evaluation-fixtures@9999999999999999999999999999999999999999",
+      "predicted_culprit_id": "tracepilot/evaluation-fixtures@9999999999999999999999999999999999999999",
+      "culprit_correct": true,
+      "cited_source_references": [
+        "tracepilot/evaluation-fixtures@9999999999999999999999999999999999999999",
+        "knowledge/runbooks/rate-limits.md#chunk-eval-9"
+      ],
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "invalid_citation": false,
+      "confidence": 0.6,
+      "tool_calls": 4,
+      "called_tools": [
+        "list_recent_commits",
+        "list_recent_pull_requests",
+        "search_knowledge",
+        "get_commit"
+      ],
+      "latency_ms": 7804.52779999996,
+      "failure_class": null,
+      "failure_reason": null
+    },
+    {
+      "scenario_id": "stale_search_endpoint",
+      "completed": true,
+      "expected_culprit_id": "tracepilot/evaluation-fixtures@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "predicted_culprit_id": "tracepilot/evaluation-fixtures@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "culprit_correct": true,
+      "cited_source_references": [
+        "tracepilot/evaluation-fixtures@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "knowledge/past_incidents/stale-environment-value.md#chunk-eval-10"
+      ],
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "invalid_citation": false,
+      "confidence": 0.6,
+      "tool_calls": 4,
+      "called_tools": [
+        "list_recent_commits",
+        "list_recent_pull_requests",
+        "search_knowledge",
+        "get_commit"
+      ],
+      "latency_ms": 6293.58880000018,
+      "failure_class": null,
+      "failure_reason": null
+    }
+  ]
+}

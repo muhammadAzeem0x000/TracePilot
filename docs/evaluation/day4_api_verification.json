@@ -1,0 +1,31 @@
+{
+  "verified_at": "2026-08-06T09:40:42.327647+00:00",
+  "health": "ok",
+  "repository": "muhammadAzeem0x000/TracePilot",
+  "incident_id": "9ec0c2b4-84de-441e-aac3-587d0972e2d6",
+  "investigation_id": "9887b5ee-0837-4003-8003-85e90bb77f77",
+  "enqueue_status_code": 202,
+  "enqueue_latency_ms": 1322.58,
+  "duplicate_enqueue_idempotent": true,
+  "observed_stages": [
+    "queued",
+    "collecting_evidence",
+    "retrieving_knowledge",
+    "reasoning",
+    "finalizing",
+    "completed"
+  ],
+  "final_status": "completed",
+  "duration_ms": 46031,
+  "tool_call_count": 4,
+  "evidence_count": 17,
+  "evidence_source_types": [
+    "github_commit",
+    "github_pull_request_search",
+    "knowledge_chunk"
+  ],
+  "citation_count": 4,
+  "citations_match_persisted_evidence": true,
+  "review_accept_then_reject": true,
+  "review_does_not_mutate_hypothesis": true
+}

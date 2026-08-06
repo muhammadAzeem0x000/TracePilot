@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from math import ceil
 from typing import Protocol
 from uuid import UUID
 
@@ -89,7 +90,6 @@ class SupabaseInvestigationJobRepository:
             job_id,
             {
                 "status": InvestigationJobStatus.COMPLETED.value,
-                "completed_at": datetime.now(UTC).isoformat(),
                 "locked_at": None,
                 "lease_expires_at": None,
                 "last_error": None,
@@ -103,18 +103,25 @@ class SupabaseInvestigationJobRepository:
         error_message: str,
         next_attempt_at: datetime,
     ) -> InvestigationJobResponse:
-        return await self._update(
-            job_id,
-            {
-                "status": InvestigationJobStatus.RETRY_SCHEDULED.value,
-                "next_attempt_at": next_attempt_at.isoformat(),
-                "last_error": error_message[:1_000],
-                "locked_at": None,
-                "lease_expires_at": None,
-                "completed_at": None,
-            },
-            "Unable to schedule investigation retry",
+        delay_seconds = max(
+            1,
+            ceil((next_attempt_at - datetime.now(UTC)).total_seconds()),
         )
+        try:
+            records = await self._client.request(
+                "POST",
+                "/rpc/schedule_investigation_job_retry",
+                json_body={
+                    "p_job_id": str(job_id),
+                    "p_error_message": error_message,
+                    "p_delay_seconds": delay_seconds,
+                },
+            )
+            if len(records) != 1:
+                raise RepositoryError("Unable to schedule investigation retry")
+            return InvestigationJobResponse.model_validate(records[0])
+        except (StorageError, ValidationError) as exc:
+            raise RepositoryError("Unable to schedule investigation retry") from exc
 
     async def fail(self, job_id: UUID, error_message: str) -> InvestigationJobResponse:
         return await self._update(
@@ -122,7 +129,6 @@ class SupabaseInvestigationJobRepository:
             {
                 "status": InvestigationJobStatus.FAILED.value,
                 "last_error": error_message[:1_000],
-                "completed_at": datetime.now(UTC).isoformat(),
                 "locked_at": None,
                 "lease_expires_at": None,
             },

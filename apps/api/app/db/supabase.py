@@ -47,8 +47,14 @@ class SupabaseRestClient:
                     headers=headers,
                 )
                 response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            detail = exc.response.text.strip().replace("\n", " ")[:500]
+            message = f"Supabase request failed with HTTP {exc.response.status_code}"
+            if detail:
+                message = f"{message}: {detail}"
+            raise StorageError(message) from exc
         except (httpx.HTTPError, httpx.TimeoutException) as exc:
-            raise StorageError("Supabase request failed") from exc
+            raise StorageError("Supabase request failed before receiving a response") from exc
 
         try:
             payload: object = response.json()
