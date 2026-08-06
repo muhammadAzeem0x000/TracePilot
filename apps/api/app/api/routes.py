@@ -20,12 +20,18 @@ from app.schemas.incident import (
     IncidentResponse,
     RepositoryFullName,
 )
-from app.schemas.investigation import InvestigationListResponse, InvestigationResponse
+from app.schemas.investigation import (
+    InvestigationAcceptedResponse,
+    InvestigationListResponse,
+    InvestigationResponse,
+    InvestigationReviewCreate,
+    InvestigationReviewResponse,
+)
 from app.schemas.knowledge import KnowledgeSearchMode, KnowledgeSearchResponse
 from app.services.incidents import IncidentNotFoundError
 from app.services.investigations import (
-    InvestigationExecutionError,
     InvestigationNotFoundError,
+    InvestigationReviewNotAllowedError,
     RepositoryContextRequiredError,
 )
 
@@ -82,12 +88,11 @@ async def get_incident(
 
 @router.post(
     "/api/v1/incidents/{incident_id}/investigations",
-    response_model=InvestigationResponse,
-    status_code=status.HTTP_201_CREATED,
+    response_model=InvestigationAcceptedResponse,
+    status_code=status.HTTP_202_ACCEPTED,
     responses={
         404: {"model": ErrorResponse},
         409: {"model": ErrorResponse},
-        502: {"model": ErrorResponse},
         503: {"model": ErrorResponse},
     },
     tags=["investigations"],
@@ -95,9 +100,9 @@ async def get_incident(
 async def run_investigation(
     incident_id: UUID,
     service: InvestigationServiceDependency,
-) -> InvestigationResponse:
+) -> InvestigationAcceptedResponse:
     try:
-        return await service.run(incident_id)
+        return await service.enqueue(incident_id)
     except IncidentNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -105,11 +110,6 @@ async def run_investigation(
         ) from exc
     except RepositoryContextRequiredError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    except InvestigationExecutionError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail={"message": str(exc), "investigation_id": str(exc.investigation_id)},
-        ) from exc
 
 
 @router.get(
@@ -167,6 +167,28 @@ async def get_investigation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Investigation {investigation_id} was not found",
         ) from exc
+
+
+@router.post(
+    "/api/v1/investigations/{investigation_id}/review",
+    response_model=InvestigationReviewResponse,
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+    tags=["investigations"],
+)
+async def review_investigation(
+    investigation_id: UUID,
+    review: InvestigationReviewCreate,
+    service: InvestigationServiceDependency,
+) -> InvestigationReviewResponse:
+    try:
+        return await service.review(investigation_id, review)
+    except InvestigationNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Investigation {investigation_id} was not found",
+        ) from exc
+    except InvestigationReviewNotAllowedError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.get(

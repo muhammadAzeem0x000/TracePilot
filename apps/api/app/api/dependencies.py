@@ -13,9 +13,14 @@ from app.repositories.investigations import (
     InvestigationRepository,
     SupabaseInvestigationRepository,
 )
+from app.repositories.jobs import InvestigationJobRepository, SupabaseInvestigationJobRepository
 from app.repositories.knowledge import (
     KnowledgeSearchRepository,
     SupabaseKnowledgeRepository,
+)
+from app.repositories.reviews import (
+    InvestigationReviewRepository,
+    SupabaseInvestigationReviewRepository,
 )
 from app.retrieval.context import ContextAssembler
 from app.retrieval.reranking import KnowledgeReranker
@@ -50,6 +55,18 @@ def get_investigation_repository(
     client: Annotated[SupabaseRestClient, Depends(get_storage_client)],
 ) -> InvestigationRepository:
     return SupabaseInvestigationRepository(client)
+
+
+def get_job_repository(
+    client: Annotated[SupabaseRestClient, Depends(get_storage_client)],
+) -> InvestigationJobRepository:
+    return SupabaseInvestigationJobRepository(client)
+
+
+def get_review_repository(
+    client: Annotated[SupabaseRestClient, Depends(get_storage_client)],
+) -> InvestigationReviewRepository:
+    return SupabaseInvestigationReviewRepository(client)
 
 
 def get_github_client(
@@ -117,6 +134,8 @@ def get_investigation_service(
         Depends(get_investigation_repository),
     ],
     evidence: Annotated[EvidenceRepository, Depends(get_evidence_repository)],
+    jobs: Annotated[InvestigationJobRepository, Depends(get_job_repository)],
+    reviews: Annotated[InvestigationReviewRepository, Depends(get_review_repository)],
     github: Annotated[GitHubClientProtocol, Depends(get_github_client)],
     llm: Annotated[LLMProvider, Depends(get_llm_provider)],
     retrieval: Annotated[KnowledgeRetrievalService, Depends(get_retrieval_service)],
@@ -126,6 +145,8 @@ def get_investigation_service(
         incidents,
         investigations,
         evidence,
+        jobs,
+        reviews,
         InvestigationToolExecutor(
             GitHubToolExecutor(github, evidence),
             KnowledgeToolExecutor(retrieval, evidence),
@@ -133,6 +154,7 @@ def get_investigation_service(
         llm,
         max_tool_calls=settings.max_tool_calls,
         final_output_retries=settings.final_output_retries,
+        max_job_attempts=settings.investigation_job_max_attempts,
     )
 
 

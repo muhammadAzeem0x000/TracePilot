@@ -1,4 +1,7 @@
+import asyncio
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,8 +10,26 @@ from fastapi.responses import JSONResponse
 from app.api.routes import router
 from app.config.settings import get_settings
 from app.repositories.incidents import RepositoryError
+from app.services.runtime import build_investigation_runtime
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    if not settings.investigation_worker_enabled:
+        yield
+        return
+
+    runtime = build_investigation_runtime(settings)
+    application.state.investigation_runtime = runtime
+    worker_task = asyncio.create_task(runtime.worker.run_forever())
+    try:
+        yield
+    finally:
+        await runtime.worker.stop()
+        await worker_task
 
 
 def create_app() -> FastAPI:
@@ -17,6 +38,7 @@ def create_app() -> FastAPI:
         title="TracePilot API",
         version="0.3.0",
         description="Evidence-grounded incident investigation with repository knowledge retrieval.",
+        lifespan=lifespan,
     )
     application.add_middleware(
         CORSMiddleware,
