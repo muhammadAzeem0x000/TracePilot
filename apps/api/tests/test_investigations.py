@@ -1,7 +1,8 @@
 import asyncio
 import json
+import time
 from collections.abc import Awaitable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -15,6 +16,8 @@ from app.integrations.github import GitHubNotFoundError
 from app.repositories.evidence import EvidenceRepository
 from app.repositories.incidents import IncidentRepository
 from app.repositories.investigations import InvestigationRepository
+from app.repositories.jobs import InvestigationJobRepository
+from app.repositories.reviews import InvestigationReviewRepository
 from app.schemas.evidence import EvidenceCreate, EvidenceResponse, EvidenceSourceType
 from app.schemas.github import (
     GitHubCommitDetail,
@@ -25,7 +28,14 @@ from app.schemas.github import (
 )
 from app.schemas.incident import IncidentCreate, IncidentResponse, IncidentStatus, Severity
 from app.schemas.investigation import (
+    InvestigationAcceptedResponse,
+    InvestigationJobResponse,
+    InvestigationJobStatus,
     InvestigationResponse,
+    InvestigationReviewCreate,
+    InvestigationReviewDecision,
+    InvestigationReviewResponse,
+    InvestigationStage,
     InvestigationStatus,
     PreliminaryInvestigationResult,
 )
@@ -33,6 +43,7 @@ from app.schemas.llm import ChatMessage, ModelToolCall, ModelTurn, ToolDefinitio
 from app.services.incidents import IncidentNotFoundError
 from app.services.investigations import (
     InvestigationExecutionError,
+    InvestigationReviewNotAllowedError,
     InvestigationService,
     RepositoryContextRequiredError,
 )
@@ -122,6 +133,7 @@ class MemoryEvidenceRepository:
 class MemoryInvestigationRepository:
     def __init__(self) -> None:
         self.items: dict[UUID, InvestigationResponse] = {}
+        self.progress_history: list[InvestigationStage] = []
 
     async def create(
         self,
@@ -133,7 +145,8 @@ class MemoryInvestigationRepository:
         stored = InvestigationResponse(
             id=uuid4(),
             incident_id=incident_id,
-            status=InvestigationStatus.IN_PROGRESS,
+            status=InvestigationStatus.PENDING,
+            stage=InvestigationStage.QUEUED,
             summary=None,
             confidence=None,
             suspected_change=None,
@@ -155,12 +168,18 @@ class MemoryInvestigationRepository:
         self,
         investigation_id: UUID,
         result: PreliminaryInvestigationResult,
+        *,
+        tool_call_count: int,
+        duration_ms: int,
     ) -> InvestigationResponse:
         now = datetime.now(UTC)
         stored = self.items[investigation_id].model_copy(
             update={
                 **result.model_dump(),
                 "status": InvestigationStatus.COMPLETED,
+                "stage": InvestigationStage.COMPLETED,
+                "tool_call_count": tool_call_count,
+                "duration_ms": duration_ms,
                 "completed_at": now,
                 "updated_at": now,
             }
@@ -173,10 +192,24 @@ class MemoryInvestigationRepository:
         stored = self.items[investigation_id].model_copy(
             update={
                 "status": InvestigationStatus.FAILED,
+                "stage": InvestigationStage.FAILED,
                 "error_message": error_message,
                 "completed_at": now,
                 "updated_at": now,
             }
+        )
+        self.items[investigation_id] = stored
+        return stored
+
+    async def update_progress(
+        self,
+        investigation_id: UUID,
+        status: InvestigationStatus,
+        stage: InvestigationStage,
+    ) -> InvestigationResponse:
+        self.progress_history.append(stage)
+        stored = self.items[investigation_id].model_copy(
+            update={"status": status, "stage": stage, "updated_at": datetime.now(UTC)}
         )
         self.items[investigation_id] = stored
         return stored
@@ -186,6 +219,173 @@ class MemoryInvestigationRepository:
 
     async def list_for_incident(self, incident_id: UUID) -> list[InvestigationResponse]:
         return [item for item in self.items.values() if item.incident_id == incident_id]
+
+
+class MemoryJobRepository:
+    def __init__(self, investigations: MemoryInvestigationRepository) -> None:
+        self.investigations = investigations
+        self.items: dict[UUID, InvestigationJobResponse] = {}
+        self._lock = asyncio.Lock()
+
+    async def enqueue(
+        self,
+        incident_id: UUID,
+        prompt_version: str,
+        model_name: str,
+        max_attempts: int,
+    ) -> InvestigationAcceptedResponse:
+        async with self._lock:
+            active = next(
+                (
+                    item
+                    for item in self.investigations.items.values()
+                    if item.incident_id == incident_id
+                    and item.status
+                    in {InvestigationStatus.PENDING, InvestigationStatus.IN_PROGRESS}
+                ),
+                None,
+            )
+            if active is not None:
+                return InvestigationAcceptedResponse(
+                    investigation_id=active.id,
+                    status=active.status,
+                    stage=active.stage,
+                    created_at=active.created_at,
+                    already_active=True,
+                )
+            investigation = await self.investigations.create(
+                incident_id,
+                prompt_version,
+                model_name,
+            )
+            now = datetime.now(UTC)
+            job = InvestigationJobResponse(
+                id=uuid4(),
+                investigation_id=investigation.id,
+                status=InvestigationJobStatus.QUEUED,
+                attempt_count=0,
+                max_attempts=max_attempts,
+                next_attempt_at=now,
+                locked_at=None,
+                lease_expires_at=None,
+                last_error=None,
+                created_at=now,
+                updated_at=now,
+                completed_at=None,
+            )
+            self.items[job.id] = job
+            return InvestigationAcceptedResponse(
+                investigation_id=investigation.id,
+                status=investigation.status,
+                stage=investigation.stage,
+                created_at=investigation.created_at,
+            )
+
+    async def claim(self, lease_seconds: int) -> InvestigationJobResponse | None:
+        async with self._lock:
+            now = datetime.now(UTC)
+            eligible = [
+                item
+                for item in self.items.values()
+                if item.attempt_count < item.max_attempts
+                and (
+                    (
+                        item.status
+                        in {InvestigationJobStatus.QUEUED, InvestigationJobStatus.RETRY_SCHEDULED}
+                        and item.next_attempt_at <= now
+                    )
+                    or (
+                        item.status is InvestigationJobStatus.RUNNING
+                        and item.lease_expires_at is not None
+                        and item.lease_expires_at <= now
+                    )
+                )
+            ]
+            if not eligible:
+                return None
+            selected = min(eligible, key=lambda item: (item.next_attempt_at, item.created_at))
+            reclaimed = selected.status is InvestigationJobStatus.RUNNING
+            claimed = selected.model_copy(
+                update={
+                    "status": InvestigationJobStatus.RUNNING,
+                    "attempt_count": selected.attempt_count + 1,
+                    "locked_at": now,
+                    "lease_expires_at": now + timedelta(seconds=lease_seconds),
+                    "updated_at": now,
+                    "reclaimed_stale_lease": reclaimed,
+                }
+            )
+            self.items[claimed.id] = claimed
+            return claimed
+
+    async def complete(self, job_id: UUID) -> InvestigationJobResponse:
+        return self._update(
+            job_id,
+            status=InvestigationJobStatus.COMPLETED,
+            completed_at=datetime.now(UTC),
+            locked_at=None,
+            lease_expires_at=None,
+            last_error=None,
+        )
+
+    async def schedule_retry(
+        self,
+        job_id: UUID,
+        error_message: str,
+        next_attempt_at: datetime,
+    ) -> InvestigationJobResponse:
+        return self._update(
+            job_id,
+            status=InvestigationJobStatus.RETRY_SCHEDULED,
+            next_attempt_at=next_attempt_at,
+            locked_at=None,
+            lease_expires_at=None,
+            last_error=error_message,
+        )
+
+    async def fail(self, job_id: UUID, error_message: str) -> InvestigationJobResponse:
+        return self._update(
+            job_id,
+            status=InvestigationJobStatus.FAILED,
+            completed_at=datetime.now(UTC),
+            locked_at=None,
+            lease_expires_at=None,
+            last_error=error_message,
+        )
+
+    def _update(self, job_id: UUID, **updates: object) -> InvestigationJobResponse:
+        stored = self.items[job_id].model_copy(
+            update={**updates, "updated_at": datetime.now(UTC)}
+        )
+        self.items[job_id] = stored
+        return stored
+
+
+class MemoryReviewRepository:
+    def __init__(self) -> None:
+        self.items: dict[UUID, InvestigationReviewResponse] = {}
+
+    async def upsert(
+        self,
+        investigation_id: UUID,
+        review: InvestigationReviewCreate,
+    ) -> InvestigationReviewResponse:
+        now = datetime.now(UTC)
+        existing = self.items.get(investigation_id)
+        stored = InvestigationReviewResponse(
+            id=existing.id if existing else uuid4(),
+            investigation_id=investigation_id,
+            decision=review.decision,
+            note=review.note,
+            reviewed_at=now,
+            created_at=existing.created_at if existing else now,
+            updated_at=now,
+        )
+        self.items[investigation_id] = stored
+        return stored
+
+    async def get(self, investigation_id: UUID) -> InvestigationReviewResponse | None:
+        return self.items.get(investigation_id)
 
 
 class FakeGitHubClient:
@@ -382,7 +582,10 @@ def make_service(
     github: FakeGitHubClient | None = None,
     evidence: MemoryEvidenceRepository | None = None,
     investigations: MemoryInvestigationRepository | None = None,
+    jobs: MemoryJobRepository | None = None,
+    reviews: MemoryReviewRepository | None = None,
     max_tool_calls: int = 6,
+    max_job_attempts: int = 3,
 ) -> tuple[InvestigationService, MemoryEvidenceRepository, MemoryInvestigationRepository]:
     evidence_repository = evidence or MemoryEvidenceRepository()
     investigation_repository = investigations or MemoryInvestigationRepository()
@@ -390,14 +593,21 @@ def make_service(
     incident_repository: IncidentRepository = MemoryIncidentRepository(incident)
     evidence_contract: EvidenceRepository = evidence_repository
     investigation_contract: InvestigationRepository = investigation_repository
+    job_repository = jobs or MemoryJobRepository(investigation_repository)
+    review_repository = reviews or MemoryReviewRepository()
+    job_contract: InvestigationJobRepository = job_repository
+    review_contract: InvestigationReviewRepository = review_repository
     service = InvestigationService(
         incident_repository,
         investigation_contract,
         evidence_contract,
+        job_contract,
+        review_contract,
         GitHubToolExecutor(github_client, evidence_contract),
         llm,
         max_tool_calls=max_tool_calls,
         final_output_retries=1,
+        max_job_attempts=max_job_attempts,
     )
     return service, evidence_repository, investigation_repository
 
@@ -405,7 +615,7 @@ def make_service(
 def test_successful_investigation_persists_commit_evidence() -> None:
     incident = make_incident()
     github = FakeGitHubClient()
-    service, evidence, _investigations = make_service(
+    service, evidence, investigations = make_service(
         incident,
         ToolThenConclusionLLM(),
         github=github,
@@ -420,6 +630,13 @@ def test_successful_investigation_persists_commit_evidence() -> None:
     stored = next(iter(evidence.items.values()))
     assert stored.source_type.value == "github_commit"
     assert result.supporting_evidence_ids == [stored.id]
+    assert result.stage is InvestigationStage.COMPLETED
+    assert investigations.progress_history == [
+        InvestigationStage.COLLECTING_EVIDENCE,
+        InvestigationStage.COLLECTING_EVIDENCE,
+        InvestigationStage.REASONING,
+        InvestigationStage.FINALIZING,
+    ]
 
 
 def test_service_can_advertise_only_tools_implemented_by_its_executor() -> None:
@@ -427,10 +644,13 @@ def test_service_can_advertise_only_tools_implemented_by_its_executor() -> None:
     llm = ToolThenConclusionLLM()
     evidence = MemoryEvidenceRepository()
     investigations = MemoryInvestigationRepository()
+    jobs = MemoryJobRepository(investigations)
     service = InvestigationService(
         MemoryIncidentRepository(incident),
         investigations,
         evidence,
+        jobs,
+        MemoryReviewRepository(),
         GitHubToolExecutor(FakeGitHubClient(), evidence),
         llm,
         tool_definitions=GITHUB_TOOL_DEFINITIONS,
@@ -611,6 +831,74 @@ def test_incident_without_repository_is_rejected_before_investigation_creation()
     assert investigations.items == {}
 
 
+def test_duplicate_active_enqueue_is_idempotent_and_rerun_after_completion_is_new() -> None:
+    incident = make_incident()
+    investigations = MemoryInvestigationRepository()
+    jobs = MemoryJobRepository(investigations)
+    service, _evidence, _ = make_service(
+        incident,
+        ToolThenConclusionLLM(),
+        investigations=investigations,
+        jobs=jobs,
+    )
+
+    first = run_async(service.enqueue(incident.id))
+    duplicate = run_async(service.enqueue(incident.id))
+
+    assert duplicate.investigation_id == first.investigation_id
+    assert duplicate.already_active is True
+    assert len(jobs.items) == 1
+
+    run_async(service.execute(first.investigation_id))
+    rerun = run_async(service.enqueue(incident.id))
+
+    assert rerun.investigation_id != first.investigation_id
+    assert rerun.already_active is False
+    assert len(jobs.items) == 2
+
+
+def test_human_review_is_separate_and_does_not_mutate_model_output() -> None:
+    incident = make_incident()
+    service, _evidence, _investigations = make_service(
+        incident,
+        ToolThenConclusionLLM(),
+    )
+    completed = run_async(service.run(incident.id))
+    original_summary = completed.summary
+
+    rejected = run_async(
+        service.review(
+            completed.id,
+            InvestigationReviewCreate(
+                decision=InvestigationReviewDecision.REJECTED,
+                note="The deployment evidence is incomplete.",
+            ),
+        )
+    )
+    reloaded = run_async(service.get(completed.id))
+
+    assert rejected.decision is InvestigationReviewDecision.REJECTED
+    assert reloaded.review == rejected
+    assert reloaded.summary == original_summary
+
+
+def test_pending_investigation_cannot_be_reviewed() -> None:
+    incident = make_incident()
+    service, _evidence, _investigations = make_service(
+        incident,
+        ToolThenConclusionLLM(),
+    )
+    accepted = run_async(service.enqueue(incident.id))
+
+    with pytest.raises(InvestigationReviewNotAllowedError, match="Only completed"):
+        run_async(
+            service.review(
+                accepted.investigation_id,
+                InvestigationReviewCreate(decision=InvestigationReviewDecision.ACCEPTED),
+            )
+        )
+
+
 def test_investigation_http_endpoints(
     client: TestClient,
     repository: FakeIncidentRepository,
@@ -627,7 +915,8 @@ def test_investigation_http_endpoints(
     ).json()
     incident = run_async(repository.get(UUID(created["id"])))
     assert incident is not None
-    service, _evidence, _investigations = make_service(incident, ToolThenConclusionLLM())
+    llm = ToolThenConclusionLLM()
+    service, _evidence, _investigations = make_service(incident, llm)
 
     def override_service() -> InvestigationService:
         return service
@@ -635,9 +924,16 @@ def test_investigation_http_endpoints(
     from app.main import app
 
     app.dependency_overrides[get_investigation_service] = override_service
+    started = time.perf_counter()
     run_response = client.post(f"/api/v1/incidents/{incident.id}/investigations")
-    assert run_response.status_code == 201
-    investigation_id = run_response.json()["id"]
+    response_latency_ms = (time.perf_counter() - started) * 1_000
+    assert run_response.status_code == 202
+    assert response_latency_ms < 100
+    assert run_response.json()["stage"] == "queued"
+    assert run_response.json()["already_active"] is False
+    assert llm.calls == 0
+    investigation_id = run_response.json()["investigation_id"]
+    run_async(service.execute(UUID(investigation_id)))
 
     evidence_response = client.get(f"/api/v1/incidents/{incident.id}/evidence")
     investigation_list = client.get(f"/api/v1/incidents/{incident.id}/investigations")
@@ -649,3 +945,16 @@ def test_investigation_http_endpoints(
     assert investigation_list.json()["count"] == 1
     assert investigation_response.status_code == 200
     assert investigation_response.json()["status"] == "completed"
+
+    review_response = client.post(
+        f"/api/v1/investigations/{investigation_id}/review",
+        json={"decision": "accepted", "note": "Matches the deployment timeline."},
+    )
+    assert review_response.status_code == 200
+    assert review_response.json()["decision"] == "accepted"
+
+    invalid_review = client.post(
+        f"/api/v1/investigations/{investigation_id}/review",
+        json={"decision": "maybe"},
+    )
+    assert invalid_review.status_code == 422

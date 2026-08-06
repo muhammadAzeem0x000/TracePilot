@@ -2,6 +2,8 @@ import asyncio
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from typing import Protocol
+from uuid import UUID
 
 from app.repositories.incidents import RepositoryError
 from app.repositories.jobs import InvestigationJobRepository
@@ -10,7 +12,14 @@ from app.services.investigation_errors import (
     PermanentInvestigationError,
     RetryableInvestigationError,
 )
-from app.services.investigations import InvestigationService
+
+
+class InvestigationExecutionService(Protocol):
+    async def execute(self, investigation_id: UUID) -> object: ...
+
+    async def mark_retry_scheduled(self, investigation_id: UUID) -> object: ...
+
+    async def mark_failed(self, investigation_id: UUID, error_message: str) -> object: ...
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +28,7 @@ class InvestigationWorker:
     def __init__(
         self,
         jobs: InvestigationJobRepository,
-        investigations: InvestigationService,
+        investigations: InvestigationExecutionService,
         *,
         lease_seconds: int,
         poll_seconds: float,
