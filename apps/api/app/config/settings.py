@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     knowledge_context_budget_tokens: int = Field(default=1_800, ge=300, le=8_000)
     knowledge_candidate_limit: int = Field(default=12, ge=5, le=30)
     knowledge_rerank_enabled: bool = True
+    investigation_worker_enabled: bool = False
+    investigation_worker_poll_seconds: float = Field(default=1.0, ge=0.1, le=30.0)
+    investigation_job_lease_seconds: int = Field(default=240, ge=30, le=3_600)
+    investigation_job_max_attempts: int = Field(default=3, ge=1, le=10)
+    investigation_retry_base_seconds: int = Field(default=5, ge=1, le=300)
     cors_origins: str = Field(default="http://localhost:3000")
 
     @model_validator(mode="after")

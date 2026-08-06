@@ -29,10 +29,13 @@ class SupabaseRestClient:
         params: Mapping[str, str] | None = None,
         json_body: Mapping[str, object] | None = None,
         prefer_representation: bool = False,
+        extra_headers: Mapping[str, str] | None = None,
     ) -> list[dict[str, object]]:
         headers = dict(self._headers)
         if prefer_representation:
             headers["Prefer"] = "return=representation"
+        if extra_headers:
+            headers.update(extra_headers)
 
         try:
             async with httpx.AsyncClient(base_url=self._base_url, timeout=10.0) as client:

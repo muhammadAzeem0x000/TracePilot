@@ -6,7 +6,12 @@ from pydantic import ValidationError
 
 from app.db.supabase import StorageError, SupabaseRestClient
 from app.repositories.incidents import RepositoryError
-from app.schemas.investigation import InvestigationResponse, PreliminaryInvestigationResult
+from app.schemas.investigation import (
+    InvestigationResponse,
+    InvestigationStage,
+    InvestigationStatus,
+    PreliminaryInvestigationResult,
+)
 
 
 class InvestigationRepository(Protocol):
@@ -21,9 +26,19 @@ class InvestigationRepository(Protocol):
         self,
         investigation_id: UUID,
         result: PreliminaryInvestigationResult,
+        *,
+        tool_call_count: int,
+        duration_ms: int,
     ) -> InvestigationResponse: ...
 
     async def fail(self, investigation_id: UUID, error_message: str) -> InvestigationResponse: ...
+
+    async def update_progress(
+        self,
+        investigation_id: UUID,
+        status: InvestigationStatus,
+        stage: InvestigationStage,
+    ) -> InvestigationResponse: ...
 
     async def get(self, investigation_id: UUID) -> InvestigationResponse | None: ...
 
@@ -45,7 +60,8 @@ class SupabaseInvestigationRepository:
             "/investigations",
             {
                 "incident_id": str(incident_id),
-                "status": "in_progress",
+                "status": "pending",
+                "stage": "queued",
                 "started_at": datetime.now(UTC).isoformat(),
                 "prompt_version": prompt_version,
                 "model_name": model_name,
@@ -57,12 +73,16 @@ class SupabaseInvestigationRepository:
         self,
         investigation_id: UUID,
         result: PreliminaryInvestigationResult,
+        *,
+        tool_call_count: int,
+        duration_ms: int,
     ) -> InvestigationResponse:
         return await self._write(
             "PATCH",
             "/investigations",
             {
                 "status": "completed",
+                "stage": "completed",
                 "summary": result.summary,
                 "confidence": result.confidence,
                 "suspected_change": result.suspected_change,
@@ -70,6 +90,8 @@ class SupabaseInvestigationRepository:
                 "missing_information": result.missing_information,
                 "recommended_next_steps": result.recommended_next_steps,
                 "error_message": None,
+                "tool_call_count": tool_call_count,
+                "duration_ms": duration_ms,
                 "completed_at": datetime.now(UTC).isoformat(),
             },
             "Unable to complete investigation",
@@ -82,10 +104,25 @@ class SupabaseInvestigationRepository:
             "/investigations",
             {
                 "status": "failed",
+                "stage": "failed",
                 "error_message": error_message[:1_000],
                 "completed_at": datetime.now(UTC).isoformat(),
             },
             "Unable to mark investigation failed",
+            investigation_id,
+        )
+
+    async def update_progress(
+        self,
+        investigation_id: UUID,
+        status: InvestigationStatus,
+        stage: InvestigationStage,
+    ) -> InvestigationResponse:
+        return await self._write(
+            "PATCH",
+            "/investigations",
+            {"status": status.value, "stage": stage.value, "error_message": None},
+            "Unable to update investigation progress",
             investigation_id,
         )
 

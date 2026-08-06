@@ -11,6 +11,75 @@ class InvestigationStatus(StrEnum):
     FAILED = "failed"
 
 
+class InvestigationStage(StrEnum):
+    QUEUED = "queued"
+    COLLECTING_EVIDENCE = "collecting_evidence"
+    RETRIEVING_KNOWLEDGE = "retrieving_knowledge"
+    REASONING = "reasoning"
+    FINALIZING = "finalizing"
+    RETRY_SCHEDULED = "retry_scheduled"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class InvestigationJobStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    RETRY_SCHEDULED = "retry_scheduled"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class InvestigationReviewDecision(StrEnum):
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+
+class InvestigationReviewCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    decision: InvestigationReviewDecision
+    note: str | None = Field(default=None, min_length=1, max_length=2_000)
+
+
+class InvestigationReviewResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    investigation_id: UUID
+    decision: InvestigationReviewDecision
+    note: str | None
+    reviewed_at: AwareDatetime
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+
+
+class InvestigationAcceptedResponse(BaseModel):
+    investigation_id: UUID
+    status: InvestigationStatus
+    stage: InvestigationStage
+    created_at: AwareDatetime
+    already_active: bool = False
+
+
+class InvestigationJobResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    investigation_id: UUID
+    status: InvestigationJobStatus
+    attempt_count: int = Field(ge=0)
+    max_attempts: int = Field(ge=1, le=10)
+    next_attempt_at: AwareDatetime
+    locked_at: AwareDatetime | None
+    lease_expires_at: AwareDatetime | None
+    last_error: str | None
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+    completed_at: AwareDatetime | None
+    reclaimed_stale_lease: bool = False
+
+
 class PreliminaryInvestigationResult(BaseModel):
     """The only model output that may be persisted as a completed result."""
 
@@ -49,6 +118,7 @@ class InvestigationResponse(BaseModel):
     id: UUID
     incident_id: UUID
     status: InvestigationStatus
+    stage: InvestigationStage = InvestigationStage.QUEUED
     summary: str | None
     confidence: float | None
     suspected_change: str | None
@@ -58,6 +128,9 @@ class InvestigationResponse(BaseModel):
     error_message: str | None
     prompt_version: str | None
     model_name: str | None
+    tool_call_count: int = Field(default=0, ge=0)
+    duration_ms: int | None = Field(default=None, ge=0)
+    review: InvestigationReviewResponse | None = None
     started_at: AwareDatetime
     completed_at: AwareDatetime | None
     created_at: AwareDatetime
