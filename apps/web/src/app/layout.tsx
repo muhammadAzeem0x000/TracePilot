@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "TracePilot",
-  description: "Evidence-grounded incident investigation foundation",
+  description: "Evidence-grounded incident investigation workspace",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
