@@ -210,11 +210,14 @@ export default function Home() {
 
   async function handleCreate(input: IncidentCreate) {
     const created = await createIncident(input);
+    selectionVersion.current += 1;
     setIncidents((current) => [created, ...current]);
     setSelected(created);
     setEvidence([]);
     setInvestigations([]);
     setMetrics(null);
+    setReviewNote("");
+    setDetailsLoading(false);
     updateIncidentUrl(created.id);
     setApiState("online");
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Icon } from "@/components/Icon";
 import { Incident, IncidentStatus, Severity } from "@/lib/api";
@@ -29,6 +29,7 @@ export function IncidentSidebar({
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [severity, setSeverity] = useState<SeverityFilter>("all");
+  const incidentListRef = useRef<HTMLElement>(null);
 
   const filteredIncidents = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -44,6 +45,13 @@ export function IncidentSidebar({
       );
     });
   }, [incidents, query, severity, status]);
+
+  useEffect(() => {
+    const selectedRow = incidentListRef.current?.querySelector<HTMLElement>(
+      '[aria-current="page"]',
+    );
+    selectedRow?.scrollIntoView({ block: "nearest" });
+  }, [filteredIncidents, selectedId]);
 
   return (
     <aside className="incident-sidebar" aria-label="Incident navigator">
@@ -117,7 +125,7 @@ export function IncidentSidebar({
             <p>Try a different search or filter.</p>
           </div>
         ) : (
-          <nav className="incident-list" aria-label="Recorded incidents">
+          <nav className="incident-list" aria-label="Recorded incidents" ref={incidentListRef}>
             {filteredIncidents.map((incident) => {
               const isSelected = incident.id === selectedId;
               return (

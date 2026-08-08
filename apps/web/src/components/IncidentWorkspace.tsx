@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyboardEvent, useMemo, useState } from "react";
+import { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { Icon, IconName } from "@/components/Icon";
 import { Evidence, Incident, Investigation, InvestigationMetrics } from "@/lib/api";
@@ -368,9 +368,14 @@ export function IncidentWorkspace({
   onReviewNoteChange,
 }: IncidentWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("overview");
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const latestInvestigation = investigations[0] ?? null;
   const investigationActive = latestInvestigation?.status === "pending" || latestInvestigation?.status === "in_progress";
   const citedIds = useMemo(() => new Set(latestInvestigation?.supporting_evidence_ids ?? []), [latestInvestigation?.supporting_evidence_ids]);
+
+  useEffect(() => {
+    if (incident) titleRef.current?.focus({ preventScroll: true });
+  }, [incident]);
 
   if (!incident) return <EmptyWorkspace publicDemoMode={publicDemoMode} onCreate={onCreate} />;
 
@@ -397,7 +402,7 @@ export function IncidentWorkspace({
           <div className={`incident-severity-icon severity-icon-${incident.severity}`}><Icon name="activity" size={20} /></div>
           <div className="incident-title-copy">
             <div className="title-badges"><span className={`severity-badge severity-${incident.severity}`}>{incident.severity}</span><span className={`status-badge status-${incident.status}`}><span />{incident.status}</span></div>
-            <h2 tabIndex={-1}>{incident.title}</h2>
+            <h2 ref={titleRef} tabIndex={-1}>{incident.title}</h2>
             <div className="incident-title-meta"><span><Icon name="clock" size={14} />Started {formatDate(incident.started_at)}</span>{incident.repository_full_name && <span><Icon name="github" size={14} />{incident.repository_full_name}</span>}</div>
           </div>
           <div className="incident-header-actions">
