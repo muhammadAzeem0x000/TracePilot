@@ -144,7 +144,11 @@ interface InvestigationListResponse {
   count: number;
 }
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(
+  /\/+$/,
+  "",
+);
+export const API_DOCUMENTATION_URL = `${API_URL}/docs`;
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -168,27 +172,27 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 export async function listIncidents(): Promise<Incident[]> {
-  const response = await fetch(`${apiUrl}/api/v1/incidents`, { cache: "no-store" });
+  const response = await fetch(`${API_URL}/api/v1/incidents`, { cache: "no-store" });
   const result = await parseResponse<IncidentListResponse>(response);
   return result.items;
 }
 
 export async function getPublicConfig(): Promise<PublicConfig> {
-  const response = await fetch(`${apiUrl}/api/v1/config`, { cache: "no-store" });
+  const response = await fetch(`${API_URL}/api/v1/config`, { cache: "no-store" });
   return parseResponse<PublicConfig>(response);
 }
 
 export async function getInvestigationMetrics(
   investigationId: string,
 ): Promise<InvestigationMetrics> {
-  const response = await fetch(`${apiUrl}/api/v1/investigations/${investigationId}/metrics`, {
+  const response = await fetch(`${API_URL}/api/v1/investigations/${investigationId}/metrics`, {
     cache: "no-store",
   });
   return parseResponse<InvestigationMetrics>(response);
 }
 
 export async function createIncident(input: IncidentCreate): Promise<Incident> {
-  const response = await fetch(`${apiUrl}/api/v1/incidents`, {
+  const response = await fetch(`${API_URL}/api/v1/incidents`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -197,14 +201,14 @@ export async function createIncident(input: IncidentCreate): Promise<Incident> {
 }
 
 export async function getIncident(incidentId: string): Promise<Incident> {
-  const response = await fetch(`${apiUrl}/api/v1/incidents/${incidentId}`, {
+  const response = await fetch(`${API_URL}/api/v1/incidents/${incidentId}`, {
     cache: "no-store",
   });
   return parseResponse<Incident>(response);
 }
 
 export async function listEvidence(incidentId: string): Promise<Evidence[]> {
-  const response = await fetch(`${apiUrl}/api/v1/incidents/${incidentId}/evidence`, {
+  const response = await fetch(`${API_URL}/api/v1/incidents/${incidentId}/evidence`, {
     cache: "no-store",
   });
   const result = await parseResponse<EvidenceListResponse>(response);
@@ -212,7 +216,7 @@ export async function listEvidence(incidentId: string): Promise<Evidence[]> {
 }
 
 export async function listInvestigations(incidentId: string): Promise<Investigation[]> {
-  const response = await fetch(`${apiUrl}/api/v1/incidents/${incidentId}/investigations`, {
+  const response = await fetch(`${API_URL}/api/v1/incidents/${incidentId}/investigations`, {
     cache: "no-store",
   });
   const result = await parseResponse<InvestigationListResponse>(response);
@@ -220,7 +224,7 @@ export async function listInvestigations(incidentId: string): Promise<Investigat
 }
 
 export async function runInvestigation(incidentId: string): Promise<InvestigationAccepted> {
-  const response = await fetch(`${apiUrl}/api/v1/incidents/${incidentId}/investigations`, {
+  const response = await fetch(`${API_URL}/api/v1/incidents/${incidentId}/investigations`, {
     method: "POST",
     headers: { Accept: "application/json" },
   });
@@ -228,7 +232,7 @@ export async function runInvestigation(incidentId: string): Promise<Investigatio
 }
 
 export async function getInvestigation(investigationId: string): Promise<Investigation> {
-  const response = await fetch(`${apiUrl}/api/v1/investigations/${investigationId}`, {
+  const response = await fetch(`${API_URL}/api/v1/investigations/${investigationId}`, {
     cache: "no-store",
   });
   return parseResponse<Investigation>(response);
@@ -239,7 +243,7 @@ export async function reviewInvestigation(
   decision: InvestigationReviewDecision,
   note?: string,
 ): Promise<InvestigationReview> {
-  const response = await fetch(`${apiUrl}/api/v1/investigations/${investigationId}/review`, {
+  const response = await fetch(`${API_URL}/api/v1/investigations/${investigationId}/review`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ decision, note: note?.trim() || null }),

@@ -7,6 +7,7 @@ import { IncidentSidebar } from "@/components/IncidentSidebar";
 import { IncidentWorkspace } from "@/components/IncidentWorkspace";
 import { NewIncidentDialog } from "@/components/NewIncidentDialog";
 import {
+  API_DOCUMENTATION_URL,
   createIncident,
   Evidence,
   getIncident,
@@ -273,7 +274,20 @@ export default function Home() {
         </div>
         <div className="header-status">
           {publicDemoMode && <span className="demo-chip"><Icon name="info" size={13} />Read-only demo</span>}
-          <span className={`api-status api-status-${apiState}`}><span />API {apiState}</span>
+          {apiState === "online" ? (
+            <a
+              aria-label="Open API documentation in a new tab"
+              className="api-status api-status-online api-status-link"
+              href={API_DOCUMENTATION_URL}
+              rel="noreferrer"
+              target="_blank"
+              title="Open API documentation"
+            >
+              <span />API online
+            </a>
+          ) : (
+            <span className={`api-status api-status-${apiState}`}><span />API {apiState}</span>
+          )}
         </div>
       </header>
 
