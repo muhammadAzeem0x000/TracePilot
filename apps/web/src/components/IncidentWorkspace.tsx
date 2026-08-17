@@ -4,6 +4,7 @@ import { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { GroundingComparisonModal } from "@/components/GroundingComparisonModal";
 import { Icon, IconName } from "@/components/Icon";
+import { TraceWaterfall } from "@/components/TraceWaterfall";
 import { Evidence, Incident, Investigation, InvestigationMetrics } from "@/lib/api";
 import {
   evidenceLabel,
@@ -342,6 +343,7 @@ function MetricsPanel({ metrics, investigation }: { metrics: InvestigationMetric
             <article><span>Estimated cost</span><strong>{metrics.estimated_cost_usd === null ? "Unknown" : `$${metrics.estimated_cost_usd.toFixed(6)}`}</strong><small>{metrics.cost_status.replaceAll("_", " ")}</small></article>
             <article><span>Fallback</span><strong>{metrics.fallback_used ? "Used" : "Not used"}</strong><small>Provider resilience</small></article>
           </div>
+          <TraceWaterfall metrics={metrics} investigation={investigation} />
           <div className="metrics-layout">
             <section className="content-card latency-card">
               <div className="card-heading"><div className="card-icon"><Icon name="clock" size={17} /></div><div><p className="section-kicker">Latency profile</p><h3>Operation stages</h3></div></div>
