@@ -489,6 +489,23 @@ kbd { display: inline-grid; place-items: center; min-width: 19px; height: 19px; 
 .drawer-metadata-grid span { color: var(--text-muted); font-size: .58rem; text-transform: uppercase; }
 .drawer-metadata-grid strong { color: var(--text); font-weight: 750; }
 
+/* Bi-directional Citation & Grounding Proof styles */
+.section-heading-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.section-heading-row .section-kicker { margin: 0; }
+.evidence-grounded-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: #dcfce7; color: #166534; font-size: .62rem; font-weight: 750; }
+
+.citation-chip-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--text); text-align: left; cursor: pointer; transition: all .15s ease; }
+.citation-chip-btn:hover { border-color: var(--primary); background: #f5f7ff; transform: translateX(2px); }
+.citation-index-badge { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--primary-soft); color: var(--primary); font-size: .68rem; font-weight: 850; flex-shrink: 0; }
+.citation-chip-content { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.citation-label { font-size: .72rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.citation-uuid { font-size: .62rem; color: var(--text-muted); }
+
+.citation-provenance-badge { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 4px 8px; border-radius: 6px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; font-size: .65rem; font-weight: 700; }
+
+.evidence-card.is-active-citation-target { border-color: #4f46e5 !important; background: #eef2ff !important; box-shadow: 0 0 0 3px rgba(79, 70, 229, .25) !important; animation: citation-pulse 1.5s infinite; }
+
+@keyframes citation-pulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(79, 70, 229, .3); } 50% { box-shadow: 0 0 0 6px rgba(79, 70, 229, .1); } }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }

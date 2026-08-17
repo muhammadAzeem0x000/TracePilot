@@ -147,7 +147,19 @@ function OverviewPanel({ incident, investigations }: { incident: Incident; inves
   );
 }
 
-function EvidencePanel({ evidence, citedIds }: { evidence: Evidence[]; citedIds: Set<string> }) {
+function EvidencePanel({
+  evidence,
+  citedIds,
+  hoveredCitationId,
+  activeEvidenceId,
+  investigation,
+}: {
+  evidence: Evidence[];
+  citedIds: Set<string>;
+  hoveredCitationId: string | null;
+  activeEvidenceId: string | null;
+  investigation: Investigation | null;
+}) {
   const sourceCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const item of evidence) {
@@ -170,18 +182,30 @@ function EvidencePanel({ evidence, citedIds }: { evidence: Evidence[]; citedIds:
         <div className="evidence-grid">
           {evidence.map((item) => {
             const cited = citedIds.has(item.id);
+            const citedIndex = investigation?.supporting_evidence_ids.indexOf(item.id) ?? -1;
+            const isTargeted = activeEvidenceId === item.id || hoveredCitationId === item.id;
             const origin = evidenceOrigin(item);
             return (
-              <article className={`evidence-card ${cited ? "is-cited" : ""}`} id={`evidence-${item.id}`} key={item.id}>
+              <article
+                className={`evidence-card ${cited ? "is-cited" : ""} ${isTargeted ? "is-active-citation-target" : ""}`}
+                id={`evidence-${item.id}`}
+                key={item.id}
+              >
                 <header>
                   <span className={`source-pill source-${item.source_type === "knowledge_chunk" ? "knowledge" : "github"}`}>
                     {item.source_type === "knowledge_chunk" ? <Icon name="layers" size={13} /> : <Icon name="github" size={13} />}
                     {origin}
                   </span>
-                  {cited && <span className="cited-pill"><Icon name="check" size={12} /> Cited</span>}
+                  {cited && <span className="cited-pill"><Icon name="check" size={12} /> Cited in Hypothesis</span>}
                 </header>
                 <h3>{evidenceLabel(item)}</h3>
                 <p className="evidence-reference mono">{item.source_reference}</p>
+                {cited && (
+                  <div className="citation-provenance-badge">
+                    <Icon name="check" size={13} />
+                    <span>✓ PostgreSQL Relational Proof {citedIndex >= 0 ? `(Citation #${citedIndex + 1})` : ""}</span>
+                  </div>
+                )}
                 <footer><time>{formatDate(item.collected_at)}</time><span className="evidence-id mono" title={item.id}>{item.id.slice(0, 8)}…</span></footer>
                 <details className="evidence-details">
                   <summary>Inspect provenance</summary>
@@ -202,10 +226,12 @@ function EvidencePanel({ evidence, citedIds }: { evidence: Evidence[]; citedIds:
 
 interface InvestigationPanelProps {
   investigation: Investigation | null;
+  evidence: Evidence[];
   publicDemoMode: boolean;
   reviewing: boolean;
   reviewNote: string;
   onEvidenceSelect: (evidenceId: string) => void;
+  onHoverCitation: (evidenceId: string | null) => void;
   onReview: (decision: "accepted" | "rejected") => void;
   onReviewNoteChange: (value: string) => void;
   onOpenComparison: () => void;
@@ -213,14 +239,18 @@ interface InvestigationPanelProps {
 
 function InvestigationPanel({
   investigation,
+  evidence,
   publicDemoMode,
   reviewing,
   reviewNote,
   onEvidenceSelect,
+  onHoverCitation,
   onReview,
   onReviewNoteChange,
   onOpenComparison,
 }: InvestigationPanelProps) {
+  const evidenceMap = useMemo(() => new Map(evidence.map((e) => [e.id, e])), [evidence]);
+
   return (
     <div className="tab-panel" id="panel-investigation" role="tabpanel" aria-labelledby="tab-investigation">
       <header className="panel-intro hypothesis-intro">
@@ -273,11 +303,38 @@ function InvestigationPanel({
             </section>
 
             <section className="hypothesis-section">
-              <p className="section-kicker">Supporting Evidence</p>
+              <div className="section-heading-row">
+                <p className="section-kicker">Supporting Evidence (Grounding Proof)</p>
+                <span className="evidence-grounded-tag">
+                  <Icon name="check" size={12} /> {investigation.supporting_evidence_ids.length} Citations Verified
+                </span>
+              </div>
               {investigation.supporting_evidence_ids.length === 0 ? <p>No Evidence was cited.</p> : (
-                <div className="citation-list">{investigation.supporting_evidence_ids.map((id, index) => (
-                  <button type="button" key={id} onClick={() => onEvidenceSelect(id)}><span>{index + 1}</span><span className="mono">{id}</span><Icon name="chevron-right" size={15} /></button>
-                ))}</div>
+                <div className="citation-list">
+                  {investigation.supporting_evidence_ids.map((id, index) => {
+                    const matchedEvidence = evidenceMap.get(id);
+                    return (
+                      <button
+                        type="button"
+                        key={id}
+                        className="citation-chip-btn"
+                        onClick={() => onEvidenceSelect(id)}
+                        onMouseEnter={() => onHoverCitation(id)}
+                        onMouseLeave={() => onHoverCitation(null)}
+                        title="Click to jump to and inspect verified Evidence card"
+                      >
+                        <span className="citation-index-badge">{index + 1}</span>
+                        <div className="citation-chip-content">
+                          <span className="citation-label">
+                            {matchedEvidence ? evidenceLabel(matchedEvidence) : "Database Evidence"}
+                          </span>
+                          <span className="mono citation-uuid">{id.slice(0, 8)}…{id.slice(-4)}</span>
+                        </div>
+                        <Icon name="chevron-right" size={14} />
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </section>
           </article>
@@ -385,6 +442,8 @@ export function IncidentWorkspace({
 }: IncidentWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("overview");
   const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [hoveredCitationId, setHoveredCitationId] = useState<string | null>(null);
+  const [activeEvidenceId, setActiveEvidenceId] = useState<string | null>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const latestInvestigation = investigations[0] ?? null;
   const investigationActive = latestInvestigation?.status === "pending" || latestInvestigation?.status === "in_progress";
@@ -407,8 +466,11 @@ export function IncidentWorkspace({
   }
 
   function showEvidence(evidenceId: string) {
+    setActiveEvidenceId(evidenceId);
     setActiveTab("evidence");
-    window.setTimeout(() => document.getElementById(`evidence-${evidenceId}`)?.scrollIntoView({ block: "center", behavior: "smooth" }), 0);
+    window.setTimeout(() => {
+      document.getElementById(`evidence-${evidenceId}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 0);
   }
 
   return (
@@ -445,14 +507,24 @@ export function IncidentWorkspace({
         {detailsLoading && investigations.length === 0 && evidence.length === 0 ? <DetailSkeleton /> : (
           <>
             {activeTab === "overview" && <OverviewPanel incident={incident} investigations={investigations} />}
-            {activeTab === "evidence" && <EvidencePanel evidence={evidence} citedIds={citedIds} />}
+            {activeTab === "evidence" && (
+              <EvidencePanel
+                evidence={evidence}
+                citedIds={citedIds}
+                hoveredCitationId={hoveredCitationId}
+                activeEvidenceId={activeEvidenceId}
+                investigation={latestInvestigation}
+              />
+            )}
             {activeTab === "investigation" && (
               <InvestigationPanel
                 investigation={latestInvestigation}
+                evidence={evidence}
                 publicDemoMode={publicDemoMode}
                 reviewing={reviewing}
                 reviewNote={reviewNote}
                 onEvidenceSelect={showEvidence}
+                onHoverCitation={setHoveredCitationId}
                 onReview={onReview}
                 onReviewNoteChange={onReviewNoteChange}
                 onOpenComparison={() => setComparisonOpen(true)}
