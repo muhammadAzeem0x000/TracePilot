@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { EvaluationDashboardModal } from "@/components/EvaluationDashboardModal";
 import { Icon } from "@/components/Icon";
 import { IncidentSidebar } from "@/components/IncidentSidebar";
 import { IncidentWorkspace } from "@/components/IncidentWorkspace";
@@ -54,6 +55,7 @@ export default function Home() {
   const [publicDemoMode, setPublicDemoMode] = useState(false);
   const [apiState, setApiState] = useState<ApiState>("connecting");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [evalModalOpen, setEvalModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const selectionVersion = useRef(0);
   const initialSelectionHandled = useRef(false);
@@ -273,6 +275,15 @@ export default function Home() {
           <div><strong>TracePilot</strong><span>Evidence-grounded incident investigation</span></div>
         </div>
         <div className="header-status">
+          <button
+            type="button"
+            className="eval-modal-trigger-btn"
+            onClick={() => setEvalModalOpen(true)}
+            title="Inspect 13/13 Adversarial Tests, Hybrid Retrieval Matrix, and Holdout Benchmarks"
+          >
+            <Icon name="check" size={14} />
+            <span>Security & Benchmarks</span>
+          </button>
           {publicDemoMode && <span className="demo-chip"><Icon name="info" size={13} />Read-only demo</span>}
           {apiState === "online" ? (
             <a
@@ -339,6 +350,11 @@ export default function Home() {
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
         onCreate={handleCreate}
+      />
+
+      <EvaluationDashboardModal
+        open={evalModalOpen}
+        onClose={() => setEvalModalOpen(false)}
       />
     </main>
   );

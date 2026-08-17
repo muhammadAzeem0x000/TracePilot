@@ -505,6 +505,65 @@ kbd { display: inline-grid; place-items: center; min-width: 19px; height: 19px; 
 
 .evidence-card.is-active-citation-target { border-color: #4f46e5 !important; background: #eef2ff !important; box-shadow: 0 0 0 3px rgba(79, 70, 229, .25) !important; animation: citation-pulse 1.5s infinite; }
 
+/* Evaluation & Adversarial Dashboard styles */
+.eval-modal-trigger-btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; height: 32px; border-radius: 8px; border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; font-size: .7rem; font-weight: 750; cursor: pointer; transition: all .15s ease; }
+.eval-modal-trigger-btn:hover { background: #dcfce7; border-color: #86efac; transform: translateY(-1px); }
+
+.eval-modal-container { max-width: 1040px; }
+.eval-nav-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.eval-nav-tab { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text-soft); font-size: .68rem; font-weight: 700; cursor: pointer; transition: all .15s ease; }
+.eval-nav-tab:hover { border-color: var(--primary); color: var(--primary); }
+.eval-nav-tab.is-active { background: #1e293b; color: #fff; border-color: #1e293b; }
+
+.eval-tab-content { padding: 22px 28px; }
+.eval-pane { display: grid; gap: 16px; animation: panel-enter .2s ease; }
+.eval-summary-banner { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 14px 18px; border-radius: 12px; background: var(--surface-soft); border: 1px solid var(--line); }
+.banner-stat { display: grid; gap: 2px; }
+.banner-stat strong { font-size: 1.15rem; font-weight: 850; letter-spacing: -.03em; color: #047857; }
+.banner-stat span { font-size: .62rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+
+.eval-note { margin: 0; font-size: .72rem; color: var(--text-muted); line-height: 1.4; }
+.adversarial-cases-list { display: grid; gap: 8px; max-height: 480px; overflow-y: auto; padding-right: 4px; }
+.adversarial-case-card { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); transition: all .15s ease; }
+.adversarial-case-card.is-expanded { border-color: #93c5fd; box-shadow: 0 4px 6px -1px rgba(0,0,0,.04); }
+.case-summary-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; cursor: pointer; }
+.case-title-cluster { display: flex; align-items: center; gap: 10px; }
+.boundary-badge { padding: 2px 7px; border-radius: 4px; background: #e0f2fe; color: #0369a1; font-size: .6rem; font-weight: 800; font-family: var(--font-mono); }
+.case-title-cluster strong { font-size: .74rem; color: var(--text); }
+.case-status-cluster { display: flex; align-items: center; gap: 10px; }
+.blocked-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: #dcfce7; color: #166534; font-size: .62rem; font-weight: 800; }
+
+.case-details-drawer { padding: 12px 14px 14px; border-top: 1px dashed var(--line); background: var(--surface-soft); display: grid; gap: 8px; font-size: .72rem; border-bottom-left-radius: 9px; border-bottom-right-radius: 9px; }
+.case-details-drawer p { margin: 0; color: var(--text-soft); }
+.drawer-code-block { display: grid; gap: 4px; }
+.drawer-code-block span { font-size: .6rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+.drawer-code-block pre { margin: 0; padding: 8px 10px; border-radius: 6px; background: #0f172a; color: #f8fafc; font-family: var(--font-mono); font-size: .65rem; overflow-x: auto; }
+.defense-explanation { padding: 8px 10px; border-radius: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; font-size: .7rem; }
+
+.retrieval-metrics-table-card { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.retrieval-metrics-table-card h3 { margin: 0; padding: 14px 18px; font-size: .82rem; border-bottom: 1px solid var(--line); background: var(--surface-soft); }
+.retrieval-table { width: 100%; border-collapse: collapse; font-size: .72rem; text-align: left; }
+.retrieval-table th { padding: 10px 18px; background: var(--surface-soft); color: var(--text-muted); font-weight: 750; font-size: .62rem; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+.retrieval-table td { padding: 12px 18px; border-bottom: 1px solid var(--line); color: var(--text); }
+.retrieval-table .highlighted-row { background: #f0fdf4; }
+.retrieval-table .best-row { background: #ecfeff; }
+
+.retrieval-insight-box { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: 10px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; font-size: .72rem; line-height: 1.45; }
+
+.holdout-manifest-strip { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-radius: 10px; background: #0f172a; color: #f8fafc; font-size: .68rem; }
+.manifest-label { color: #94a3b8; margin-right: 8px; font-weight: 600; }
+.manifest-hash { font-family: var(--font-mono); color: #38bdf8; font-size: .65rem; word-break: break-all; }
+.freeze-badge { padding: 3px 8px; border-radius: 999px; background: #0369a1; color: #fff; font-weight: 750; font-size: .6rem; flex-shrink: 0; }
+
+.holdout-scenarios-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.holdout-card { padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); display: grid; gap: 6px; }
+.holdout-card-header { display: flex; justify-content: space-between; align-items: center; }
+.holdout-card-header strong { font-size: .74rem; color: var(--text); font-family: var(--font-mono); }
+.holdout-status-badge { display: inline-flex; align-items: center; gap: 4px; color: #166534; font-size: .65rem; font-weight: 750; }
+.holdout-meta-row { font-size: .65rem; color: var(--text-muted); }
+.holdout-meta-row code { color: #0284c7; }
+.holdout-stats-row { display: flex; justify-content: space-between; font-size: .62rem; color: var(--text-soft); font-weight: 600; border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 2px; }
+
 @keyframes citation-pulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(79, 70, 229, .3); } 50% { box-shadow: 0 0 0 6px rgba(79, 70, 229, .1); } }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @keyframes spin { to { transform: rotate(360deg); } }
