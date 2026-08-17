@@ -2,6 +2,7 @@
 
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
+import { GroundingComparisonModal } from "@/components/GroundingComparisonModal";
 import { Icon, IconName } from "@/components/Icon";
 import { Evidence, Incident, Investigation, InvestigationMetrics } from "@/lib/api";
 import {
@@ -206,6 +207,7 @@ interface InvestigationPanelProps {
   onEvidenceSelect: (evidenceId: string) => void;
   onReview: (decision: "accepted" | "rejected") => void;
   onReviewNoteChange: (value: string) => void;
+  onOpenComparison: () => void;
 }
 
 function InvestigationPanel({
@@ -216,12 +218,24 @@ function InvestigationPanel({
   onEvidenceSelect,
   onReview,
   onReviewNoteChange,
+  onOpenComparison,
 }: InvestigationPanelProps) {
   return (
     <div className="tab-panel" id="panel-investigation" role="tabpanel" aria-labelledby="tab-investigation">
       <header className="panel-intro hypothesis-intro">
         <div><p className="section-kicker">Model-generated inference</p><h2>Preliminary hypothesis</h2><p>A structured, validated conclusion over stored Evidence—not a confirmed root cause.</p></div>
-        <span className="inference-boundary"><Icon name="sparkles" size={15} /> Inference</span>
+        <div className="hypothesis-header-actions">
+          <button
+            type="button"
+            className="comparison-trigger-btn"
+            onClick={onOpenComparison}
+            title="Compare ungrounded LLM response vs TracePilot grounded architecture"
+          >
+            <Icon name="sparkles" size={14} />
+            <span>Compare vs Naive LLM</span>
+          </button>
+          <span className="inference-boundary"><Icon name="sparkles" size={15} /> Inference</span>
+        </div>
       </header>
 
       {!investigation ? (
@@ -368,6 +382,7 @@ export function IncidentWorkspace({
   onReviewNoteChange,
 }: IncidentWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("overview");
+  const [comparisonOpen, setComparisonOpen] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const latestInvestigation = investigations[0] ?? null;
   const investigationActive = latestInvestigation?.status === "pending" || latestInvestigation?.status === "in_progress";
@@ -429,11 +444,27 @@ export function IncidentWorkspace({
           <>
             {activeTab === "overview" && <OverviewPanel incident={incident} investigations={investigations} />}
             {activeTab === "evidence" && <EvidencePanel evidence={evidence} citedIds={citedIds} />}
-            {activeTab === "investigation" && <InvestigationPanel investigation={latestInvestigation} publicDemoMode={publicDemoMode} reviewing={reviewing} reviewNote={reviewNote} onEvidenceSelect={showEvidence} onReview={onReview} onReviewNoteChange={onReviewNoteChange} />}
+            {activeTab === "investigation" && (
+              <InvestigationPanel
+                investigation={latestInvestigation}
+                publicDemoMode={publicDemoMode}
+                reviewing={reviewing}
+                reviewNote={reviewNote}
+                onEvidenceSelect={showEvidence}
+                onReview={onReview}
+                onReviewNoteChange={onReviewNoteChange}
+                onOpenComparison={() => setComparisonOpen(true)}
+              />
+            )}
             {activeTab === "metrics" && <MetricsPanel metrics={metrics} investigation={latestInvestigation} />}
           </>
         )}
       </div>
+
+      <GroundingComparisonModal
+        open={comparisonOpen}
+        onClose={() => setComparisonOpen(false)}
+      />
     </section>
   );
 }
