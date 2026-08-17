@@ -7,6 +7,7 @@ import { Icon } from "@/components/Icon";
 import { IncidentSidebar } from "@/components/IncidentSidebar";
 import { IncidentWorkspace } from "@/components/IncidentWorkspace";
 import { NewIncidentDialog } from "@/components/NewIncidentDialog";
+import { SandboxPlaygroundModal } from "@/components/SandboxPlaygroundModal";
 import {
   API_DOCUMENTATION_URL,
   createIncident,
@@ -56,6 +57,7 @@ export default function Home() {
   const [apiState, setApiState] = useState<ApiState>("connecting");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [evalModalOpen, setEvalModalOpen] = useState(false);
+  const [sandboxModalOpen, setSandboxModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const selectionVersion = useRef(0);
   const initialSelectionHandled = useRef(false);
@@ -277,6 +279,15 @@ export default function Home() {
         <div className="header-status">
           <button
             type="button"
+            className="sandbox-modal-trigger-btn"
+            onClick={() => setSandboxModalOpen(true)}
+            title="Launch interactive zero-cost leased worker investigation sandbox"
+          >
+            <Icon name="play" size={13} />
+            <span>Interactive Sandbox</span>
+          </button>
+          <button
+            type="button"
             className="eval-modal-trigger-btn"
             onClick={() => setEvalModalOpen(true)}
             title="Inspect 13/13 Adversarial Tests, Hybrid Retrieval Matrix, and Holdout Benchmarks"
@@ -355,6 +366,11 @@ export default function Home() {
       <EvaluationDashboardModal
         open={evalModalOpen}
         onClose={() => setEvalModalOpen(false)}
+      />
+
+      <SandboxPlaygroundModal
+        open={sandboxModalOpen}
+        onClose={() => setSandboxModalOpen(false)}
       />
     </main>
   );
