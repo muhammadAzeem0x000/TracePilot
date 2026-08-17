@@ -976,3 +976,32 @@ def test_investigation_http_endpoints(
         json={"decision": "maybe"},
     )
     assert invalid_review.status_code == 422
+
+
+def test_diagnostic_tool_definitions_and_schema_validation() -> None:
+    from app.ai.tool_definitions import DIAGNOSTIC_TOOL_DEFINITIONS
+    from app.schemas.diagnostics import GetKubernetesEventsArguments, GetSentryIssueArguments
+
+    assert len(DIAGNOSTIC_TOOL_DEFINITIONS) == 2
+    sentry_tool = next(
+        t for t in DIAGNOSTIC_TOOL_DEFINITIONS if t.function.name == "get_sentry_issue_trace"
+    )
+    k8s_tool = next(
+        t for t in DIAGNOSTIC_TOOL_DEFINITIONS if t.function.name == "get_kubernetes_events"
+    )
+
+    assert sentry_tool.function.description != ""
+    assert k8s_tool.function.description != ""
+
+    sentry_args = GetSentryIssueArguments.model_validate({"issue_id": "ISSUE-101"})
+    assert sentry_args.issue_id == "ISSUE-101"
+
+    k8s_args = GetKubernetesEventsArguments.model_validate({"namespace": "prod", "limit": 20})
+    assert k8s_args.namespace == "prod"
+    assert k8s_args.limit == 20
+
+    with pytest.raises(ValidationError):
+        GetSentryIssueArguments.model_validate({"issue_id": "ISSUE-101", "extra": "forbidden"})
+
+    with pytest.raises(ValidationError):
+        GetKubernetesEventsArguments.model_validate({"limit": 100})

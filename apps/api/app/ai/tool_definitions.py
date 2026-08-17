@@ -2,6 +2,7 @@ from typing import cast
 
 from pydantic import BaseModel
 
+from app.schemas.diagnostics import GetKubernetesEventsArguments, GetSentryIssueArguments
 from app.schemas.github import (
     GetCommitArguments,
     ListRecentCommitsArguments,
@@ -59,5 +60,18 @@ KNOWLEDGE_TOOL_DEFINITION = _tool(
     ),
     SearchKnowledgeArguments,
 )
+
+DIAGNOSTIC_TOOL_DEFINITIONS = [
+    _tool(
+        "get_sentry_issue_trace",
+        "Retrieve stack traces, breadcrumbs, and exception details for a Sentry issue.",
+        GetSentryIssueArguments,
+    ),
+    _tool(
+        "get_kubernetes_events",
+        "Retrieve recent pod lifecycle and warning events from the Kubernetes cluster namespace.",
+        GetKubernetesEventsArguments,
+    ),
+]
 
 INVESTIGATION_TOOL_DEFINITIONS = [*GITHUB_TOOL_DEFINITIONS, KNOWLEDGE_TOOL_DEFINITION]
