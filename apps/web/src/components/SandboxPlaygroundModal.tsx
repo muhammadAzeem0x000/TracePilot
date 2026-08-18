@@ -361,9 +361,7 @@ export function SandboxPlaygroundModal({ open, onClose }: SandboxPlaygroundModal
         <div className="sandbox-sticky-ctrl-bar">
           <div className="sticky-step-indicator">
             <span className="stat-label">Step</span>
-            <strong>{currentStepIndex + 1}/{maxSteps}</strong>
-            <span className="bullet-sep">•</span>
-            <span className="stage-pill">{currentStep.stage}</span>
+            <strong className="mono">{currentStepIndex + 1}/{maxSteps}</strong>
           </div>
           <div className="sandbox-controls-cluster">
             <button
@@ -373,7 +371,7 @@ export function SandboxPlaygroundModal({ open, onClose }: SandboxPlaygroundModal
               onClick={handleStepBack}
               title="Previous step"
             >
-              <Icon name="arrow-left" size={13} /> Prev
+              <Icon name="arrow-left" size={13} /> <span>Prev</span>
             </button>
             <button
               type="button"
@@ -381,7 +379,7 @@ export function SandboxPlaygroundModal({ open, onClose }: SandboxPlaygroundModal
               onClick={() => setIsPlaying(!isPlaying)}
             >
               <Icon name={isPlaying ? "activity" : "play"} size={13} />
-              {isPlaying ? "Pause" : "Auto Play"}
+              <span>{isPlaying ? "Pause" : "Auto Play"}</span>
             </button>
             <button
               type="button"
@@ -390,7 +388,7 @@ export function SandboxPlaygroundModal({ open, onClose }: SandboxPlaygroundModal
               onClick={handleStepForward}
               title="Next step"
             >
-              Next <Icon name="chevron-right" size={13} />
+              <span>Next</span> <Icon name="chevron-right" size={13} />
             </button>
             <button type="button" className="ctrl-btn" onClick={handleReset} title="Reset simulation">
               Reset

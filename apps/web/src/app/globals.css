@@ -385,12 +385,11 @@ kbd { display: inline-grid; place-items: center; min-width: 19px; height: 19px; 
 .modal-close-button:hover { color: var(--text); background: var(--surface-hover); }
 
 /* Sticky control strip for Sandbox simulation */
-.sandbox-sticky-ctrl-bar { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 8px 24px; background: #fafafa; border-bottom: 1px solid var(--line); gap: 10px; }
-.sticky-step-indicator { display: flex; align-items: center; gap: 6px; font-size: .74rem; }
+.sandbox-sticky-ctrl-bar { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 8px 24px; background: #fafafa; border-bottom: 1px solid var(--line); gap: 12px; }
+.sticky-step-indicator { display: flex; align-items: center; gap: 6px; font-size: .74rem; flex-shrink: 0; min-width: 70px; }
 .sticky-step-indicator strong { font-size: .82rem; color: var(--text); }
 .stat-label { color: var(--text-muted); text-transform: uppercase; font-size: .6rem; font-weight: 750; }
-.bullet-sep { color: var(--text-muted); }
-.stage-pill { padding: 2px 7px; border-radius: 4px; background: #e0f2fe; color: #0369a1; font-size: .62rem; font-weight: 750; white-space: nowrap; }
+.sandbox-controls-cluster { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
 
 .archetype-selector-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 10px 24px; background: var(--surface-soft); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .selector-label { color: var(--text-soft); font-size: .72rem; font-weight: 750; }
@@ -754,10 +753,10 @@ kbd { display: inline-grid; place-items: center; min-width: 19px; height: 19px; 
   .modal-header { padding: 12px 14px; }
   .modal-header-copy h2 { font-size: 1rem; }
   .modal-header-copy p { display: none; }
-  .sandbox-sticky-ctrl-bar { padding: 6px 12px; gap: 6px; }
-  .sticky-step-indicator { font-size: .68rem; }
-  .stage-pill { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
-  .ctrl-btn { padding: 4px 8px; font-size: .64rem; }
+  .sandbox-sticky-ctrl-bar { padding: 6px 12px; gap: 8px; }
+  .sticky-step-indicator { font-size: .68rem; min-width: 58px; }
+  .sandbox-controls-cluster { gap: 4px; }
+  .ctrl-btn { padding: 4px 7px; font-size: .63rem; gap: 3px; }
   .archetype-selector-bar { padding: 8px 12px; gap: 6px; }
   .archetype-pill { padding: 4px 9px; font-size: .62rem; }
   .eval-nav-tab { padding: 4px 8px; font-size: .62rem; }
