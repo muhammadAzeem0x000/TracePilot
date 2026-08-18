@@ -274,28 +274,33 @@ export default function Home() {
       <header className="app-header">
         <div className="brand-lockup">
           <div className="brand-mark"><Icon name="activity" size={19} /></div>
-          <div><strong>TracePilot</strong><span>Evidence-grounded incident investigation</span></div>
+          <div className="brand-titles">
+            <strong>TracePilot</strong>
+            <span className="brand-subtitle">Evidence-grounded incident investigation</span>
+          </div>
         </div>
-        <div className="header-status">
+        <div className="header-actions">
           <button
             type="button"
-            className="sandbox-modal-trigger-btn"
+            className="sandbox-modal-trigger-btn header-action-btn"
             onClick={() => setSandboxModalOpen(true)}
             title="Launch interactive zero-cost leased worker investigation sandbox"
           >
             <Icon name="play" size={13} />
-            <span>Interactive Sandbox</span>
+            <span className="btn-label-full">Interactive Sandbox</span>
+            <span className="btn-label-short">Sandbox</span>
           </button>
           <button
             type="button"
-            className="eval-modal-trigger-btn"
+            className="eval-modal-trigger-btn header-action-btn"
             onClick={() => setEvalModalOpen(true)}
             title="Inspect 13/13 Adversarial Tests, Hybrid Retrieval Matrix, and Holdout Benchmarks"
           >
             <Icon name="check" size={14} />
-            <span>Security & Benchmarks</span>
+            <span className="btn-label-full">Security & Benchmarks</span>
+            <span className="btn-label-short">Benchmarks</span>
           </button>
-          {publicDemoMode && <span className="demo-chip"><Icon name="info" size={13} />Read-only demo</span>}
+          {publicDemoMode && <span className="demo-chip"><Icon name="info" size={13} />Demo</span>}
           {apiState === "online" ? (
             <a
               aria-label="Open API documentation in a new tab"
@@ -305,10 +310,14 @@ export default function Home() {
               target="_blank"
               title="Open API documentation"
             >
-              <span />API online
+              <span />
+              <span className="api-status-text">API online</span>
             </a>
           ) : (
-            <span className={`api-status api-status-${apiState}`}><span />API {apiState}</span>
+            <span className={`api-status api-status-${apiState}`}>
+              <span />
+              <span className="api-status-text">API {apiState}</span>
+            </span>
           )}
         </div>
       </header>

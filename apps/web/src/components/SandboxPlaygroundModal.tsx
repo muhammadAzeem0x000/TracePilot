@@ -439,117 +439,119 @@ export function SandboxPlaygroundModal({ open, onClose }: SandboxPlaygroundModal
           />
         </div>
 
-        <div className="sandbox-workspace-grid">
-          {/* LEFT: STEP RUNNER */}
-          <div className="sandbox-step-pane">
-            <div className="current-step-card">
-              <div className="step-card-header">
-                <span className={`dag-badge ${currentStep.badge}`}>{currentStep.stage}</span>
-                <h3>{currentStep.title}</h3>
-              </div>
-              <p className="step-card-desc">{currentStep.description}</p>
-
-              <div className="step-logs-box">
-                <span>Execution Logs & SQL Traces</span>
-                <div className="logs-scroller">
-                  {currentStep.logs.map((log, idx) => (
-                    <div key={idx} className="log-line mono">
-                      {log}
-                    </div>
-                  ))}
+        <div className="modal-scrollable-body">
+          <div className="sandbox-workspace-grid">
+            {/* LEFT: STEP RUNNER */}
+            <div className="sandbox-step-pane">
+              <div className="current-step-card">
+                <div className="step-card-header">
+                  <span className={`dag-badge ${currentStep.badge}`}>{currentStep.stage}</span>
+                  <h3>{currentStep.title}</h3>
                 </div>
-              </div>
-            </div>
+                <p className="step-card-desc">{currentStep.description}</p>
 
-            {/* PERSISTED EVIDENCE DRAWER */}
-            {accumulatedEvidence.length > 0 && (
-              <div className="sandbox-evidence-drawer">
-                <h4>
-                  <Icon name="evidence" size={14} /> Persisted PostgreSQL Evidence (
-                  {accumulatedEvidence.length})
-                </h4>
-                <div className="sandbox-evidence-list">
-                  {accumulatedEvidence.map((ev) => (
-                    <div key={ev.id} className="sandbox-evidence-item">
-                      <span className="ev-pill mono">{ev.type}</span>
-                      <strong>{ev.title}</strong>
-                      <span className="mono ev-id">{ev.id.slice(0, 8)}…</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* RIGHT: CONCLUSION STATE */}
-          <div className="sandbox-conclusion-pane">
-            {currentStepIndex === maxSteps - 1 ? (
-              <div className="sandbox-final-hypothesis">
-                <div className="final-badge-row">
-                  <span className="grounded-badge">
-                    <Icon name="check" size={13} /> Investigation Completed & Verified
-                  </span>
-                  <span className="confidence-pill">
-                    {Math.round(activeScenario.conclusion.confidence * 100)}% Confidence
-                  </span>
-                </div>
-                <h3>Preliminary Hypothesis</h3>
-                <p className="final-summary">{activeScenario.conclusion.summary}</p>
-
-                <div className="final-culprit-box">
-                  <span>Verified Suspected Culprit</span>
-                  <code className="mono">{activeScenario.conclusion.suspectedCulprit}</code>
-                </div>
-
-                <div className="final-citations-box">
-                  <span>Database-Verified Citations</span>
-                  <div className="citations-pills-row">
-                    {activeScenario.conclusion.supportingEvidenceIds.map((id, idx) => (
-                      <span key={id} className="verified-citation-pill mono">
-                        ✓ [{idx + 1}] {id.slice(0, 8)}…
-                      </span>
+                <div className="step-logs-box">
+                  <span>Execution Logs & SQL Traces</span>
+                  <div className="logs-scroller">
+                    {currentStep.logs.map((log, idx) => (
+                      <div key={idx} className="log-line mono">
+                        {log}
+                      </div>
                     ))}
                   </div>
                 </div>
+              </div>
 
-                <div className="final-next-steps">
-                  <span>Recommended Next Steps</span>
-                  <ol>
-                    {activeScenario.conclusion.nextSteps.map((step) => (
-                      <li key={step}>{step}</li>
+              {/* PERSISTED EVIDENCE DRAWER */}
+              {accumulatedEvidence.length > 0 && (
+                <div className="sandbox-evidence-drawer">
+                  <h4>
+                    <Icon name="evidence" size={14} /> Persisted PostgreSQL Evidence (
+                    {accumulatedEvidence.length})
+                  </h4>
+                  <div className="sandbox-evidence-list">
+                    {accumulatedEvidence.map((ev) => (
+                      <div key={ev.id} className="sandbox-evidence-item">
+                        <span className="ev-pill mono">{ev.type}</span>
+                        <strong>{ev.title}</strong>
+                        <span className="mono ev-id">{ev.id.slice(0, 8)}…</span>
+                      </div>
                     ))}
-                  </ol>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="sandbox-pending-pane">
-                <div className="pending-visual">
-                  <Icon name="activity" size={32} />
-                </div>
-                <h3>Investigation in Progress…</h3>
-                <p>
-                  TracePilot is currently executing Step {currentStepIndex + 1} of {maxSteps}.
-                  Advance or click &quot;Auto Play&quot; to reach final synthesis and citation verification.
-                </p>
-                <div className="pending-step-list">
-                  {activeScenario.steps.map((s, idx) => (
-                    <div
-                      key={s.stepNumber}
-                      className={`pending-step-node ${
-                        idx === currentStepIndex
-                          ? "is-current"
-                          : idx < currentStepIndex
-                          ? "is-done"
-                          : ""
-                      }`}
-                    >
-                      <span className="step-num">{s.stepNumber}</span>
-                      <span>{s.title}</span>
+              )}
+            </div>
+
+            {/* RIGHT: CONCLUSION STATE */}
+            <div className="sandbox-conclusion-pane">
+              {currentStepIndex === maxSteps - 1 ? (
+                <div className="sandbox-final-hypothesis">
+                  <div className="final-badge-row">
+                    <span className="grounded-badge">
+                      <Icon name="check" size={13} /> Investigation Completed & Verified
+                    </span>
+                    <span className="confidence-pill">
+                      {Math.round(activeScenario.conclusion.confidence * 100)}% Confidence
+                    </span>
+                  </div>
+                  <h3>Preliminary Hypothesis</h3>
+                  <p className="final-summary">{activeScenario.conclusion.summary}</p>
+
+                  <div className="final-culprit-box">
+                    <span>Verified Suspected Culprit</span>
+                    <code className="mono">{activeScenario.conclusion.suspectedCulprit}</code>
+                  </div>
+
+                  <div className="final-citations-box">
+                    <span>Database-Verified Citations</span>
+                    <div className="citations-pills-row">
+                      {activeScenario.conclusion.supportingEvidenceIds.map((id, idx) => (
+                        <span key={id} className="verified-citation-pill mono">
+                          ✓ [{idx + 1}] {id.slice(0, 8)}…
+                        </span>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="final-next-steps">
+                    <span>Recommended Next Steps</span>
+                    <ol>
+                      {activeScenario.conclusion.nextSteps.map((step) => (
+                        <li key={step}>{step}</li>
+                      ))}
+                    </ol>
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="sandbox-pending-pane">
+                  <div className="pending-visual">
+                    <Icon name="activity" size={32} />
+                  </div>
+                  <h3>Investigation in Progress…</h3>
+                  <p>
+                    TracePilot is currently executing Step {currentStepIndex + 1} of {maxSteps}.
+                    Advance or click &quot;Auto Play&quot; to reach final synthesis and citation verification.
+                  </p>
+                  <div className="pending-step-list">
+                    {activeScenario.steps.map((s, idx) => (
+                      <div
+                        key={s.stepNumber}
+                        className={`pending-step-node ${
+                          idx === currentStepIndex
+                            ? "is-current"
+                            : idx < currentStepIndex
+                            ? "is-done"
+                            : ""
+                        }`}
+                      >
+                        <span className="step-num">{s.stepNumber}</span>
+                        <span>{s.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

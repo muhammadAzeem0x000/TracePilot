@@ -276,58 +276,60 @@ export function EvaluationDashboardModal({ open, onClose }: EvaluationDashboardM
             <div className="eval-pane">
               <div className="retrieval-metrics-table-card">
                 <h3>Retrieval Performance Matrix (12 Fixed Queries over 10 Knowledge Docs)</h3>
-                <table className="retrieval-table">
-                  <thead>
-                    <tr>
-                      <th>Retriever Strategy</th>
-                      <th>Hit@1</th>
-                      <th>Hit@3</th>
-                      <th>Hit@5</th>
-                      <th>MRR</th>
-                      <th>Avg Latency</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>
-                        <strong>Semantic pgvector (Gemini 768-dim)</strong>
-                      </td>
-                      <td>0.750</td>
-                      <td>1.000</td>
-                      <td>1.000</td>
-                      <td>0.875</td>
-                      <td className="mono">2,110.8 ms</td>
-                    </tr>
-                    <tr className="highlighted-row">
-                      <td>
-                        <strong>Hybrid (pgvector Cosine + PostgreSQL FTS via RRF k=60)</strong>
-                      </td>
-                      <td>0.750</td>
-                      <td>1.000</td>
-                      <td>1.000</td>
-                      <td>0.875</td>
-                      <td className="mono">1,934.2 ms</td>
-                    </tr>
-                    <tr className="best-row">
-                      <td>
-                        <strong>Hybrid + Structured LLM Reranking (rerank_v1)</strong>
-                      </td>
-                      <td>
-                        <strong>0.917</strong>
-                      </td>
-                      <td>
-                        <strong>1.000</strong>
-                      </td>
-                      <td>
-                        <strong>1.000</strong>
-                      </td>
-                      <td>
-                        <strong>0.958</strong>
-                      </td>
-                      <td className="mono">4,874.1 ms</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div className="table-responsive-wrapper">
+                  <table className="retrieval-table">
+                    <thead>
+                      <tr>
+                        <th>Retriever Strategy</th>
+                        <th>Hit@1</th>
+                        <th>Hit@3</th>
+                        <th>Hit@5</th>
+                        <th>MRR</th>
+                        <th>Avg Latency</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <strong>Semantic pgvector (Gemini 768-dim)</strong>
+                        </td>
+                        <td>0.750</td>
+                        <td>1.000</td>
+                        <td>1.000</td>
+                        <td>0.875</td>
+                        <td className="mono">2,110.8 ms</td>
+                      </tr>
+                      <tr className="highlighted-row">
+                        <td>
+                          <strong>Hybrid (pgvector Cosine + PostgreSQL FTS via RRF k=60)</strong>
+                        </td>
+                        <td>0.750</td>
+                        <td>1.000</td>
+                        <td>1.000</td>
+                        <td>0.875</td>
+                        <td className="mono">1,934.2 ms</td>
+                      </tr>
+                      <tr className="best-row">
+                        <td>
+                          <strong>Hybrid + Structured LLM Reranking (rerank_v1)</strong>
+                        </td>
+                        <td>
+                          <strong>0.917</strong>
+                        </td>
+                        <td>
+                          <strong>1.000</strong>
+                        </td>
+                        <td>
+                          <strong>1.000</strong>
+                        </td>
+                        <td>
+                          <strong>0.958</strong>
+                        </td>
+                        <td className="mono">4,874.1 ms</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <div className="retrieval-insight-box">

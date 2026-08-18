@@ -223,120 +223,122 @@ export function GroundingComparisonModal({
           </span>
         </div>
 
-        <div className="comparison-columns-grid">
-          {/* NAIVE COLUMN */}
-          <article className="comparison-card naive-card">
-            <div className="comparison-card-header">
-              <div className="card-badge naive-badge">
-                <Icon name="x" size={15} /> Naive Chatbot / Direct LLM
+        <div className="modal-scrollable-body">
+          <div className="comparison-columns-grid">
+            {/* NAIVE COLUMN */}
+            <article className="comparison-card naive-card">
+              <div className="comparison-card-header">
+                <div className="card-badge naive-badge">
+                  <Icon name="x" size={15} /> Naive Chatbot / Direct LLM
+                </div>
+                <span className="model-tag">{activeArchetype.naive.model}</span>
               </div>
-              <span className="model-tag">{activeArchetype.naive.model}</span>
-            </div>
 
-            <div className="comparison-confidence-row">
-              <div className="confidence-stat false-confidence">
-                <strong>{Math.round(activeArchetype.naive.confidence * 100)}%</strong>
-                <span>Model Confidence</span>
+              <div className="comparison-confidence-row">
+                <div className="confidence-stat false-confidence">
+                  <strong>{Math.round(activeArchetype.naive.confidence * 100)}%</strong>
+                  <span>Model Confidence</span>
+                </div>
+                <div className="confidence-warning">
+                  <Icon name="info" size={14} />
+                  <span>Ungrounded overconfidence (hallucinated certainty)</span>
+                </div>
               </div>
-              <div className="confidence-warning">
-                <Icon name="info" size={14} />
-                <span>Ungrounded overconfidence (hallucinated certainty)</span>
-              </div>
-            </div>
 
-            <div className="comparison-body-section">
-              <h4>Generated Diagnosis</h4>
-              <p className="diagnosis-text">{activeArchetype.naive.summary}</p>
-            </div>
-
-            <div className="comparison-culprit-section">
-              <h4>Suspected Culprit</h4>
-              <div className="culprit-box culprit-hallucinated">
-                <span className="mono">{activeArchetype.naive.suspectedCulprit}</span>
+              <div className="comparison-body-section">
+                <h4>Generated Diagnosis</h4>
+                <p className="diagnosis-text">{activeArchetype.naive.summary}</p>
               </div>
-            </div>
 
-            <div className="comparison-failures-section">
-              <h4>Critical Engineering Failure Modes</h4>
-              <ul className="failure-list">
-                {activeArchetype.naive.failureReasons.map((reason) => (
-                  <li key={reason}>
-                    <Icon name="x" size={14} />
-                    <span>{reason}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+              <div className="comparison-culprit-section">
+                <h4>Suspected Culprit</h4>
+                <div className="culprit-box culprit-hallucinated">
+                  <span className="mono">{activeArchetype.naive.suspectedCulprit}</span>
+                </div>
+              </div>
 
-            <footer className="comparison-footer naive-footer">
-              <div>
-                <span>Evidence Inspected</span>
-                <strong>{activeArchetype.naive.evidenceInspected}</strong>
+              <div className="comparison-failures-section">
+                <h4>Critical Engineering Failure Modes</h4>
+                <ul className="failure-list">
+                  {activeArchetype.naive.failureReasons.map((reason) => (
+                    <li key={reason}>
+                      <Icon name="x" size={14} />
+                      <span>{reason}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div>
-                <span>Verified Citations</span>
-                <strong className="zero-citations">0 (None)</strong>
-              </div>
-            </footer>
-          </article>
 
-          {/* GROUNDED COLUMN */}
-          <article className="comparison-card grounded-card">
-            <div className="comparison-card-header">
-              <div className="card-badge grounded-badge">
-                <Icon name="check" size={15} /> TracePilot Grounded System
-              </div>
-              <span className="model-tag">{activeArchetype.grounded.model}</span>
-            </div>
+              <footer className="comparison-footer naive-footer">
+                <div>
+                  <span>Evidence Inspected</span>
+                  <strong>{activeArchetype.naive.evidenceInspected}</strong>
+                </div>
+                <div>
+                  <span>Verified Citations</span>
+                  <strong className="zero-citations">0 (None)</strong>
+                </div>
+              </footer>
+            </article>
 
-            <div className="comparison-confidence-row">
-              <div className="confidence-stat grounded-confidence">
-                <strong>{Math.round(activeArchetype.grounded.confidence * 100)}%</strong>
-                <span>Calibrated Confidence</span>
+            {/* GROUNDED COLUMN */}
+            <article className="comparison-card grounded-card">
+              <div className="comparison-card-header">
+                <div className="card-badge grounded-badge">
+                  <Icon name="check" size={15} /> TracePilot Grounded System
+                </div>
+                <span className="model-tag">{activeArchetype.grounded.model}</span>
               </div>
-              <div className="confidence-valid">
-                <Icon name="check" size={14} />
-                <span>Honest uncertainty with missing info explicitly stated</span>
-              </div>
-            </div>
 
-            <div className="comparison-body-section">
-              <h4>Validated Diagnosis</h4>
-              <p className="diagnosis-text">{activeArchetype.grounded.summary}</p>
-            </div>
-
-            <div className="comparison-culprit-section">
-              <h4>Verified Culprit</h4>
-              <div className="culprit-box culprit-verified">
-                <span className="mono">{activeArchetype.grounded.suspectedCulprit}</span>
+              <div className="comparison-confidence-row">
+                <div className="confidence-stat grounded-confidence">
+                  <strong>{Math.round(activeArchetype.grounded.confidence * 100)}%</strong>
+                  <span>Calibrated Confidence</span>
+                </div>
+                <div className="confidence-valid">
+                  <Icon name="check" size={14} />
+                  <span>Honest uncertainty with missing info explicitly stated</span>
+                </div>
               </div>
-            </div>
 
-            <div className="comparison-failures-section">
-              <h4>Database & Verification Proof</h4>
-              <ul className="proof-list">
-                {activeArchetype.grounded.verifiedProof.map((proof) => (
-                  <li key={proof}>
-                    <Icon name="check" size={14} />
-                    <span>{proof}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+              <div className="comparison-body-section">
+                <h4>Validated Diagnosis</h4>
+                <p className="diagnosis-text">{activeArchetype.grounded.summary}</p>
+              </div>
 
-            <footer className="comparison-footer grounded-footer">
-              <div>
-                <span>Evidence Inspected</span>
-                <strong>{activeArchetype.grounded.evidenceInspected}</strong>
+              <div className="comparison-culprit-section">
+                <h4>Verified Culprit</h4>
+                <div className="culprit-box culprit-verified">
+                  <span className="mono">{activeArchetype.grounded.suspectedCulprit}</span>
+                </div>
               </div>
-              <div>
-                <span>Verified Citations</span>
-                <strong className="valid-citations">
-                  {activeArchetype.grounded.citationsCount} Relational DB UUIDs
-                </strong>
+
+              <div className="comparison-failures-section">
+                <h4>Database & Verification Proof</h4>
+                <ul className="proof-list">
+                  {activeArchetype.grounded.verifiedProof.map((proof) => (
+                    <li key={proof}>
+                      <Icon name="check" size={14} />
+                      <span>{proof}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </footer>
-          </article>
+
+              <footer className="comparison-footer grounded-footer">
+                <div>
+                  <span>Evidence Inspected</span>
+                  <strong>{activeArchetype.grounded.evidenceInspected}</strong>
+                </div>
+                <div>
+                  <span>Verified Citations</span>
+                  <strong className="valid-citations">
+                    {activeArchetype.grounded.citationsCount} Relational DB UUIDs
+                  </strong>
+                </div>
+              </footer>
+            </article>
+          </div>
         </div>
 
         <footer className="modal-footer">
