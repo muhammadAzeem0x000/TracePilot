@@ -369,35 +369,47 @@ kbd { display: inline-grid; place-items: center; min-width: 19px; height: 19px; 
 .comparison-trigger-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; color: #4f46e5; border: 1px solid #c7d2fe; border-radius: 8px; background: #eef2ff; font-size: .68rem; font-weight: 700; cursor: pointer; transition: all .15s ease; }
 .comparison-trigger-btn:hover { background: #e0e7ff; border-color: #a5b4fc; transform: translateY(-1px); }
 
-/* Modal Architecture: Fixed Header & Footer with Scrollable Body */
-.modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(15, 23, 42, .65); backdrop-filter: blur(6px); animation: panel-enter .2s ease; }
-.modal-container { width: 100%; height: 90vh; max-height: 860px; display: flex; flex-direction: column; overflow: hidden; color: var(--text); border-radius: 16px; background: var(--surface); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .25); border: 1px solid var(--line); }
+/* Modal Architecture: Compact Header & Footer with Scrollable Body */
+.modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(15, 23, 42, .68); backdrop-filter: blur(8px); animation: panel-enter .2s ease; }
+.modal-container { width: 100%; height: min(840px, calc(100dvh - 64px)); max-height: calc(100dvh - 64px); display: flex; flex-direction: column; overflow: hidden; color: var(--text); border-radius: 16px; background: var(--surface); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .28); border: 1px solid var(--line); margin: auto; }
 .comparison-modal-container { max-width: 1080px; }
 .eval-modal-container { max-width: 1040px; }
 .sandbox-modal-container { max-width: 1100px; }
 
-.modal-header { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 26px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
-.modal-header-copy h2 { margin: 6px 0 4px; font-size: 1.25rem; font-weight: 800; letter-spacing: -.03em; }
-.modal-header-copy p { margin: 0; color: var(--text-muted); font-size: .75rem; }
+.modal-header { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.modal-header-copy { display: flex; flex-direction: column; gap: 4px; }
+.modal-header-copy h2 { margin: 0; font-size: 1.15rem; font-weight: 800; letter-spacing: -.03em; }
+.modal-header-copy p { margin: 0; color: var(--text-muted); font-size: .74rem; }
 .badge-row { display: flex; align-items: center; gap: 8px; }
-.modal-close-button { display: grid; place-items: center; width: 34px; height: 34px; color: var(--text-muted); border: 0; border-radius: 8px; background: transparent; cursor: pointer; flex-shrink: 0; }
+.modal-close-button { display: grid; place-items: center; width: 32px; height: 32px; color: var(--text-muted); border: 0; border-radius: 8px; background: transparent; cursor: pointer; flex-shrink: 0; }
 .modal-close-button:hover { color: var(--text); background: var(--surface-hover); }
 
-.archetype-selector-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 10px 26px; background: var(--surface-soft); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+/* Sticky control strip for Sandbox simulation */
+.sandbox-sticky-ctrl-bar { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 8px 24px; background: #fafafa; border-bottom: 1px solid var(--line); gap: 10px; }
+.sticky-step-indicator { display: flex; align-items: center; gap: 6px; font-size: .74rem; }
+.sticky-step-indicator strong { font-size: .82rem; color: var(--text); }
+.stat-label { color: var(--text-muted); text-transform: uppercase; font-size: .6rem; font-weight: 750; }
+.bullet-sep { color: var(--text-muted); }
+.stage-pill { padding: 2px 7px; border-radius: 4px; background: #e0f2fe; color: #0369a1; font-size: .62rem; font-weight: 750; white-space: nowrap; }
+
+.archetype-selector-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 10px 24px; background: var(--surface-soft); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .selector-label { color: var(--text-soft); font-size: .72rem; font-weight: 750; }
 .archetype-pills { display: flex; gap: 8px; flex-wrap: wrap; }
 .archetype-pill { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text-soft); font-size: .68rem; font-weight: 650; cursor: pointer; transition: all .15s ease; }
 .archetype-pill:hover { border-color: var(--primary); color: var(--primary); }
 .archetype-pill.is-active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-.scenario-context-strip { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 26px; background: #fafafa; border-bottom: 1px solid var(--line); font-size: .7rem; }
+.scenario-context-strip { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 24px; background: #fafafa; border-bottom: 1px solid var(--line); font-size: .7rem; }
 .context-repo { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); color: var(--text-soft); font-weight: 600; }
 .context-incident { color: var(--text-muted); }
 
 /* Scrollable Dynamic Body container */
 .modal-scrollable-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; }
 
-.comparison-columns-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px 26px; }
+.modal-body-note-card { display: flex; align-items: flex-start; gap: 10px; margin: 12px 24px 20px; padding: 12px 16px; border-radius: 10px; background: var(--surface-soft); border: 1px solid var(--line); font-size: .72rem; color: var(--text-soft); line-height: 1.45; }
+.modal-body-note-card svg { flex-shrink: 0; margin-top: 2px; color: var(--primary); }
+
+.comparison-columns-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px 24px; }
 .comparison-card { display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .04); }
 .naive-card { border-color: #fecaca; background: linear-gradient(180deg, #fff5f5 0%, #fff 15%); }
 .grounded-card { border-color: #a7f3d0; background: linear-gradient(180deg, #f0fdf4 0%, #fff 15%); }
@@ -437,7 +449,8 @@ kbd { display: inline-grid; place-items: center; min-width: 19px; height: 19px; 
 .zero-citations { color: #dc2626; font-weight: 750; }
 .valid-citations { color: #16a34a; font-weight: 750; }
 
-.modal-footer { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 26px; background: var(--surface-soft); border-top: 1px solid var(--line); }
+.modal-footer { flex: 0 0 auto; display: flex; justify-content: flex-end; align-items: center; gap: 14px; padding: 12px 24px; background: var(--surface-soft); border-top: 1px solid var(--line); }
+.modal-footer .primary-button { min-width: 140px; }
 .footer-summary-note { display: flex; align-items: center; gap: 8px; font-size: .72rem; color: var(--text-soft); }
 
 /* Trace Waterfall & Causal DAG styles */
@@ -675,21 +688,22 @@ kbd { display: inline-grid; place-items: center; min-width: 19px; height: 19px; 
   .detail-content { padding: 20px; }
 
   /* Modal responsive improvements on tablet */
-  .modal-backdrop { padding: 12px; }
-  .modal-container { height: 94vh; max-height: 94vh; border-radius: 14px; }
-  .modal-header { padding: 16px 20px 12px; }
-  .modal-header-copy h2 { font-size: 1.12rem; }
-  .modal-header-copy p { font-size: .7rem; }
-  .archetype-selector-bar { padding: 10px 20px; gap: 8px; }
-  .scenario-context-strip { padding: 8px 20px; }
-  .comparison-columns-grid { grid-template-columns: 1fr; gap: 16px; padding: 16px 20px; }
-  .eval-tab-content { padding: 16px 20px; }
+  .modal-backdrop { padding: 16px 12px; }
+  .modal-container { height: min(800px, calc(100dvh - 40px)); max-height: calc(100dvh - 40px); border-radius: 14px; }
+  .modal-header { padding: 14px 18px; }
+  .modal-header-copy h2 { font-size: 1.08rem; }
+  .modal-header-copy p { display: none; }
+  .sandbox-sticky-ctrl-bar { padding: 6px 18px; }
+  .archetype-selector-bar { padding: 10px 18px; gap: 8px; }
+  .scenario-context-strip { padding: 8px 18px; }
+  .comparison-columns-grid { grid-template-columns: 1fr; gap: 14px; padding: 14px 18px; }
+  .eval-tab-content { padding: 14px 18px; }
   .eval-summary-banner { grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 12px 14px; }
-  .sandbox-live-stats-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px 20px; }
-  .sandbox-controls-cluster { grid-column: 1 / -1; justify-content: space-between; width: 100%; margin-top: 2px; }
-  .sandbox-workspace-grid { grid-template-columns: 1fr; gap: 16px; padding: 16px 20px; min-height: 0; }
-  .modal-footer { padding: 12px 20px; flex-direction: column-reverse; gap: 10px; }
-  .modal-footer .primary-button { width: 100%; }
+  .sandbox-live-stats-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px 18px; }
+  .sandbox-workspace-grid { grid-template-columns: 1fr; gap: 14px; padding: 14px 18px; min-height: 0; }
+  .modal-body-note-card { margin: 10px 18px 16px; }
+  .modal-footer { padding: 10px 18px; justify-content: stretch; }
+  .modal-footer .primary-button { width: 100%; height: 38px; }
   .dag-parallel-grid { grid-template-columns: 1fr; }
 }
 
@@ -734,27 +748,32 @@ kbd { display: inline-grid; place-items: center; min-width: 19px; height: 19px; 
   .dialog-header, .dialog-body, .dialog-actions { padding-right: 16px; padding-left: 16px; }
   .dialog-field-row { grid-template-columns: 1fr; }
 
-  /* Compact Modal on Mobile Screens */
-  .modal-backdrop { padding: 6px; }
-  .modal-container { height: 96vh; max-height: 96vh; border-radius: 10px; }
-  .modal-header { padding: 12px 14px 10px; }
+  /* Well-proportioned Mobile Modal (Centered Card) */
+  .modal-backdrop { padding: 12px 8px; align-items: center; }
+  .modal-container { height: min(740px, calc(100dvh - 24px)); max-height: calc(100dvh - 24px); border-radius: 14px; }
+  .modal-header { padding: 12px 14px; }
   .modal-header-copy h2 { font-size: 1rem; }
-  .modal-header-copy p { font-size: .66rem; }
-  .archetype-selector-bar { padding: 8px 14px; gap: 6px; }
-  .archetype-pill { padding: 3px 8px; font-size: .62rem; }
+  .modal-header-copy p { display: none; }
+  .sandbox-sticky-ctrl-bar { padding: 6px 12px; gap: 6px; }
+  .sticky-step-indicator { font-size: .68rem; }
+  .stage-pill { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+  .ctrl-btn { padding: 4px 8px; font-size: .64rem; }
+  .archetype-selector-bar { padding: 8px 12px; gap: 6px; }
+  .archetype-pill { padding: 4px 9px; font-size: .62rem; }
   .eval-nav-tab { padding: 4px 8px; font-size: .62rem; }
-  .scenario-context-strip { padding: 6px 14px; flex-direction: column; align-items: flex-start; gap: 2px; }
-  .comparison-columns-grid { padding: 12px 14px; gap: 12px; }
-  .comparison-card { padding: 14px; }
-  .eval-tab-content { padding: 12px 14px; }
+  .scenario-context-strip { padding: 6px 12px; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .comparison-columns-grid { padding: 12px; gap: 12px; }
+  .comparison-card { padding: 12px; }
+  .eval-tab-content { padding: 12px; }
   .eval-summary-banner { grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px 10px; }
   .banner-stat strong { font-size: 1rem; }
-  .sandbox-live-stats-bar { padding: 8px 14px; }
-  .sandbox-workspace-grid { padding: 12px 14px; gap: 12px; }
-  .current-step-card { padding: 14px; }
+  .sandbox-live-stats-bar { padding: 8px 12px; }
+  .sandbox-workspace-grid { padding: 12px; gap: 12px; }
+  .current-step-card { padding: 12px; }
   .holdout-manifest-strip { flex-direction: column; align-items: flex-start; gap: 6px; }
   .holdout-scenarios-grid { grid-template-columns: 1fr; }
-  .modal-footer { padding: 10px 14px; }
+  .modal-body-note-card { margin: 8px 12px 14px; padding: 10px 12px; font-size: .67rem; }
+  .modal-footer { padding: 8px 12px; }
 }
 
 @media (max-width: 440px) {

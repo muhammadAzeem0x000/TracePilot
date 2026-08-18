@@ -183,10 +183,6 @@ export function GroundingComparisonModal({
               <span className="demo-chip">Why AI Engineering Matters</span>
             </div>
             <h2 id="comparison-title">Naive LLM vs. TracePilot Grounded Architecture</h2>
-            <p>
-              Compare standard ungrounded model hallucinations against TracePilot&apos;s
-              persist-before-cite evidence contract.
-            </p>
           </div>
           <button
             aria-label="Close modal"
@@ -198,32 +194,32 @@ export function GroundingComparisonModal({
           </button>
         </header>
 
-        <div className="archetype-selector-bar">
-          <span className="selector-label">Incident Scenario:</span>
-          <div className="archetype-pills">
-            {COMPARISON_ARCHETYPES.map((arch) => (
-              <button
-                key={arch.id}
-                type="button"
-                className={`archetype-pill ${arch.id === selectedId ? "is-active" : ""}`}
-                onClick={() => setSelectedId(arch.id)}
-              >
-                {arch.title}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="scenario-context-strip">
-          <span className="context-repo">
-            <Icon name="repository" size={14} /> {activeArchetype.repository}
-          </span>
-          <span className="context-incident">
-            <strong>Incident:</strong> {activeArchetype.incidentTitle}
-          </span>
-        </div>
-
         <div className="modal-scrollable-body">
+          <div className="archetype-selector-bar">
+            <span className="selector-label">Incident Scenario:</span>
+            <div className="archetype-pills">
+              {COMPARISON_ARCHETYPES.map((arch) => (
+                <button
+                  key={arch.id}
+                  type="button"
+                  className={`archetype-pill ${arch.id === selectedId ? "is-active" : ""}`}
+                  onClick={() => setSelectedId(arch.id)}
+                >
+                  {arch.title}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="scenario-context-strip">
+            <span className="context-repo">
+              <Icon name="repository" size={14} /> {activeArchetype.repository}
+            </span>
+            <span className="context-incident">
+              <strong>Incident:</strong> {activeArchetype.incidentTitle}
+            </span>
+          </div>
+
           <div className="comparison-columns-grid">
             {/* NAIVE COLUMN */}
             <article className="comparison-card naive-card">
@@ -339,16 +335,17 @@ export function GroundingComparisonModal({
               </footer>
             </article>
           </div>
-        </div>
 
-        <footer className="modal-footer">
-          <div className="footer-summary-note">
+          <div className="modal-body-note-card">
             <Icon name="activity" size={16} />
             <span>
               <strong>Key Takeaway:</strong> TracePilot eliminates hallucinations by turning LLM tool calls
               into persisted PostgreSQL Evidence rows before citation validation occurs.
             </span>
           </div>
+        </div>
+
+        <footer className="modal-footer">
           <button className="primary-button" type="button" onClick={onClose}>
             Close Comparison
           </button>

@@ -345,11 +345,7 @@ export function SandboxPlaygroundModal({ open, onClose }: SandboxPlaygroundModal
               </span>
               <span className="demo-chip">Zero-Cost Public Demo Sandbox</span>
             </div>
-            <h2 id="sandbox-title">Interactive Leased Worker Investigation Sandbox</h2>
-            <p>
-              Step through the full end-to-end investigation lifecycle: PostgreSQL lease claims,
-              tool execution, hybrid RRF search, and database citation verification.
-            </p>
+            <h2 id="sandbox-title">Investigation Sandbox</h2>
           </div>
           <button
             aria-label="Close modal"
@@ -361,43 +357,13 @@ export function SandboxPlaygroundModal({ open, onClose }: SandboxPlaygroundModal
           </button>
         </header>
 
-        <div className="archetype-selector-bar">
-          <span className="selector-label">Scenario Archetype:</span>
-          <div className="archetype-pills">
-            {SANDBOX_SCENARIOS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className={`archetype-pill ${s.id === selectedScenarioId ? "is-active" : ""}`}
-                onClick={() => {
-                  setSelectedScenarioId(s.id);
-                  handleReset();
-                }}
-              >
-                {s.title}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="sandbox-live-stats-bar">
-          <div className="stat-node">
-            <span>Stage</span>
-            <strong>{currentStep.stage}</strong>
-          </div>
-          <div className="stat-node">
-            <span>Step</span>
-            <strong>
-              {currentStepIndex + 1} of {maxSteps}
-            </strong>
-          </div>
-          <div className="stat-node">
-            <span>Reported Tokens</span>
-            <strong className="mono">{cumulativeTokens.toLocaleString()}</strong>
-          </div>
-          <div className="stat-node">
-            <span>Persisted Evidence</span>
-            <strong>{accumulatedEvidence.length} rows</strong>
+        {/* Sticky slim control strip */}
+        <div className="sandbox-sticky-ctrl-bar">
+          <div className="sticky-step-indicator">
+            <span className="stat-label">Step</span>
+            <strong>{currentStepIndex + 1}/{maxSteps}</strong>
+            <span className="bullet-sep">•</span>
+            <span className="stage-pill">{currentStep.stage}</span>
           </div>
           <div className="sandbox-controls-cluster">
             <button
@@ -407,14 +373,14 @@ export function SandboxPlaygroundModal({ open, onClose }: SandboxPlaygroundModal
               onClick={handleStepBack}
               title="Previous step"
             >
-              <Icon name="arrow-left" size={14} /> Prev
+              <Icon name="arrow-left" size={13} /> Prev
             </button>
             <button
               type="button"
               className={`ctrl-btn play-btn ${isPlaying ? "is-playing" : ""}`}
               onClick={() => setIsPlaying(!isPlaying)}
             >
-              <Icon name={isPlaying ? "activity" : "play"} size={14} />
+              <Icon name={isPlaying ? "activity" : "play"} size={13} />
               {isPlaying ? "Pause" : "Auto Play"}
             </button>
             <button
@@ -424,7 +390,7 @@ export function SandboxPlaygroundModal({ open, onClose }: SandboxPlaygroundModal
               onClick={handleStepForward}
               title="Next step"
             >
-              Next <Icon name="chevron-right" size={14} />
+              Next <Icon name="chevron-right" size={13} />
             </button>
             <button type="button" className="ctrl-btn" onClick={handleReset} title="Reset simulation">
               Reset
@@ -440,6 +406,48 @@ export function SandboxPlaygroundModal({ open, onClose }: SandboxPlaygroundModal
         </div>
 
         <div className="modal-scrollable-body">
+          {/* Scenario Archetype selector */}
+          <div className="archetype-selector-bar">
+            <span className="selector-label">Scenario Archetype:</span>
+            <div className="archetype-pills">
+              {SANDBOX_SCENARIOS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`archetype-pill ${s.id === selectedScenarioId ? "is-active" : ""}`}
+                  onClick={() => {
+                    setSelectedScenarioId(s.id);
+                    handleReset();
+                  }}
+                >
+                  {s.title}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Stats Bar */}
+          <div className="sandbox-live-stats-bar">
+            <div className="stat-node">
+              <span>Stage</span>
+              <strong>{currentStep.stage}</strong>
+            </div>
+            <div className="stat-node">
+              <span>Step</span>
+              <strong>
+                {currentStepIndex + 1} of {maxSteps}
+              </strong>
+            </div>
+            <div className="stat-node">
+              <span>Reported Tokens</span>
+              <strong className="mono">{cumulativeTokens.toLocaleString()}</strong>
+            </div>
+            <div className="stat-node">
+              <span>Persisted Evidence</span>
+              <strong>{accumulatedEvidence.length} rows</strong>
+            </div>
+          </div>
+
           <div className="sandbox-workspace-grid">
             {/* LEFT: STEP RUNNER */}
             <div className="sandbox-step-pane">
@@ -553,16 +561,17 @@ export function SandboxPlaygroundModal({ open, onClose }: SandboxPlaygroundModal
               )}
             </div>
           </div>
-        </div>
 
-        <footer className="modal-footer">
-          <div className="footer-summary-note">
+          <div className="modal-body-note-card">
             <Icon name="activity" size={16} />
             <span>
               <strong>Sandbox Guarantee:</strong> Runs deterministic lifecycle simulations on real
               benchmark data with zero external API key costs or database mutation risks.
             </span>
           </div>
+        </div>
+
+        <footer className="modal-footer">
           <button className="primary-button" type="button" onClick={onClose}>
             Close Sandbox
           </button>
