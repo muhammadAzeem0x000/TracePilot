@@ -274,20 +274,23 @@ export function TraceWaterfall({ metrics, investigation }: TraceWaterfallProps) 
 
       {viewMode === "waterfall" ? (
         <div className="waterfall-timeline-container">
-          <div className="timeline-header-axis">
-            <span>0 ms</span>
-            <span>{formatDuration(Math.round(totalInvestigationMs * 0.25))}</span>
-            <span>{formatDuration(Math.round(totalInvestigationMs * 0.5))}</span>
-            <span>{formatDuration(Math.round(totalInvestigationMs * 0.75))}</span>
-            <span>{formatDuration(totalInvestigationMs)}</span>
+          <div className="waterfall-axis-header-row">
+            <span className="axis-col-label span-col">Operation Span</span>
+            <div className="timeline-header-axis">
+              <span>0 ms</span>
+              <span>{formatDuration(Math.round(totalInvestigationMs * 0.33))}</span>
+              <span>{formatDuration(Math.round(totalInvestigationMs * 0.66))}</span>
+              <span>{formatDuration(totalInvestigationMs)}</span>
+            </div>
+            <span className="axis-col-label duration-col">Duration</span>
           </div>
 
           <div className="waterfall-rows">
             {spans.map((span) => {
-              const leftPct = Math.min((span.offsetMs / totalInvestigationMs) * 100, 95);
+              const leftPct = Math.min((span.offsetMs / totalInvestigationMs) * 100, 96);
               const widthPct = Math.max(
                 Math.min((span.durationMs / totalInvestigationMs) * 100, 100 - leftPct),
-                3,
+                2,
               );
               const isSelected = selectedSpanId === span.id;
 
@@ -298,6 +301,7 @@ export function TraceWaterfall({ metrics, investigation }: TraceWaterfallProps) 
                   onClick={() =>
                     setSelectedSpanId(selectedSpanId === span.id ? null : span.id)
                   }
+                  title={`${span.name} (${formatDuration(span.durationMs)}) — Click for details`}
                 >
                   <div className="span-info">
                     <span
@@ -317,14 +321,12 @@ export function TraceWaterfall({ metrics, investigation }: TraceWaterfallProps) 
                         width: `${widthPct}%`,
                         background: getCategoryColor(span.category),
                       }}
-                    >
-                      <span className="span-bar-label">{formatDuration(span.durationMs)}</span>
-                    </div>
+                    />
                   </div>
 
                   <div className="span-stats">
                     {span.tokens && (
-                      <span className="span-tokens">{span.tokens.toLocaleString()} tok</span>
+                      <span className="span-tokens mono">{span.tokens.toLocaleString()} tok</span>
                     )}
                     <span className="span-duration mono">{formatDuration(span.durationMs)}</span>
                   </div>
